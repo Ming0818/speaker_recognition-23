@@ -6,7 +6,7 @@ from resnet import resnet_v2, lr_schedule
 from transformer import get_transformer
 
 num_classes = 2000
-shape = (20, 1024)
+shape = (24, 1024)
 input_array = keras.Input(shape)
 
 three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
