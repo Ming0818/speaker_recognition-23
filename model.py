@@ -2,27 +2,29 @@ import keras
 from keras import Model
 from keras.optimizers import Adam
 from keras.utils import plot_model
+
 from resnet import resnet_v2, lr_schedule
 from transformer import get_transformer
 
-num_classes = 2000
-shape = (24, 1024)
-input_array = keras.Input(shape)
 
-three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
+def get_model(shape=(32, 1024), num_classes=500):
+    input_array = keras.Input(shape)
 
-transformer_output = keras.layers.Flatten()(get_transformer(transformer_input=input_array, transformer_depth=3))
-resnet_output = resnet_v2(inputs=three_d_input, n=1)
+    three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
 
-mid = keras.layers.concatenate([resnet_output, transformer_output])
+    transformer_output = keras.layers.Flatten()(get_transformer(transformer_input=input_array, transformer_depth=3))
+    resnet_output = resnet_v2(inputs=three_d_input, n=1)
 
-output = keras.layers.Dense(num_classes,
-                            activation='softmax',
-                            kernel_initializer='he_normal')(mid)
+    mid = keras.layers.concatenate([resnet_output, transformer_output])
 
-model = Model(inputs=input_array, outputs=output)
-model.compile(loss='categorical_crossentropy',
-              optimizer=Adam(lr=lr_schedule(0)),
-              metrics=['accuracy'])
-model.summary()
-plot_model(model, to_file='model.png')
+    output = keras.layers.Dense(num_classes,
+                                activation='softmax',
+                                kernel_initializer='he_normal')(mid)
+
+    model = Model(inputs=input_array, outputs=output)
+    model.compile(loss='categorical_crossentropy',
+                  optimizer=Adam(lr=lr_schedule(0)),
+                  metrics=['accuracy'])
+    model.summary()
+    plot_model(model, to_file='model.png')
+    return model
