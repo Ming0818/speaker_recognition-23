@@ -10,5 +10,6 @@ def wav2mfcc(file_path, max_pad_len=150):
     mfcc = np.pad(mfcc, pad_width=((0, 0), (0, pad_width)), mode='constant')
     return mfcc
 
+
 if __name__ == '__main__':
-    wav2mfcc("D:\\af2019-sr-devset-20190312\\data\\00df05c18b3ad92648119e8ad06c7fc7.wav")
+    wav2mfcc("")
