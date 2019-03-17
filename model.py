@@ -23,7 +23,7 @@ def get_model(shape=(32, 1024), num_classes=500):
 
     model = Model(inputs=input_array, outputs=output)
     model.compile(loss='categorical_crossentropy',
-                  optimizer=Adam(lr=lr_schedule(0)),
+                  optimizer="sgd",
                   metrics=['accuracy'])
     model.summary()
     plot_model(model, to_file='model.png')
