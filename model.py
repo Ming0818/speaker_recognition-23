@@ -6,6 +6,7 @@ from keras.utils import plot_model
 
 from resnet import resnet_v2
 from transformer import get_transformer
+from loss import l2_softmax
 
 
 def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
@@ -34,7 +35,7 @@ def res_plus_transformer_model(shape=(32, 1024), num_classes=500):
                                 kernel_initializer='he_normal')(mid)
 
     model = Model(inputs=input_array, outputs=output)
-    model.compile(loss='categorical_crossentropy',
+    model.compile(loss=l2_softmax(5),
                   optimizer="sgd",
                   metrics=['accuracy'])
     model.summary()
