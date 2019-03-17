@@ -20,6 +20,8 @@ parser.add_argument('-c', '--class_num', type=int, default=103, help='class num 
 parser.add_argument('-pc', '--process_class', type=int, default=0, help='class of process\' way')
 parser.add_argument('-mt', '--model_type', type=int, default=0,
                     help='type of model.0:res_plus_transformer; 1.simple_cnn; 2.res_net')
+parser.add_argument('-n', '--net_depth', type=int, default=1,
+                    help='net depth of res_net')
 
 args = parser.parse_args()
 
@@ -32,6 +34,7 @@ output_shape = args.output_shape
 class_num = args.class_num
 process_class = args.process_class
 model_type = args.model_type
+net_depth = args.net_depth
 
 # 保存模型!!!
 
@@ -51,7 +54,7 @@ x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_
     process_class=process_class)
 y = keras.utils.to_categorical(y, num_classes=class_num)
 x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
-model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type)
+model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth)
 # callbacks = [lr_reducer, lr_scheduler]
 
 model.fit(np.array(x), y,
