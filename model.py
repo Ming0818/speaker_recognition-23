@@ -1,9 +1,8 @@
 import keras
 from keras import Model
-from keras.optimizers import Adam
 from keras.utils import plot_model
 
-from resnet import resnet_v2, lr_schedule
+from resnet import resnet_v2
 from transformer import get_transformer
 
 
@@ -28,3 +27,11 @@ def get_model(shape=(32, 1024), num_classes=500):
     model.summary()
     plot_model(model, to_file='model.png')
     return model
+
+
+def load_model() -> keras.Model:
+    """
+    返回训练好的模型
+    :return:
+    """
+    pass

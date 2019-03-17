@@ -61,6 +61,20 @@ class DataSet:
                 label_list.append(self.label_dict[file_dir])
         return file_list, label_list
 
+    def get_register_data(self) -> List:
+        """
+        返回注册成员的语音
+        :return:
+        """
+        pass
+
+    def get_test_data(self) -> List:
+        """
+        返回需要判断的几个成员的语音
+        :return:
+        """
+        pass
+
 
 if __name__ == '__main__':
     x, y = DataSet(file_dir="", output_shape=(32, 1024), sample_rate=16000).get_train_data()

@@ -30,6 +30,8 @@ file_dir = args.file_dir
 output_shape = args.output_shape
 class_num = args.class_num
 
+# 保存模型!!!
+
 # checkpoint = ModelCheckpoint(filepath=filepath,
 #                              monitor='val_acc',
 #                              verbose=1,
