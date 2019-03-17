@@ -104,4 +104,3 @@ class DataSet:
 
 if __name__ == '__main__':
     x, y = DataSet(file_dir="", output_shape=(32, 1024), sample_rate=16000).get_train_data()
-    print()
