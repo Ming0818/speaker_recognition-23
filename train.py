@@ -19,6 +19,8 @@ parser.add_argument('-b', '--batch_size', type=int, default=16, help='Number of 
 # parser.add_argument('-lr', '--learning_rate', type=float, default=0.01, help='initial learning rate')
 parser.add_argument('-sr', '--sample_rate', type=int, default=16000, help='sample rate of wave')
 parser.add_argument('-c', '--class_num', type=int, default=103, help='class num of voice')
+parser.add_argument('-pc', '--process_class', type=int, default=0, help='class of process\' way')
+
 
 args = parser.parse_args()
 
@@ -29,6 +31,7 @@ epochs = args.epochs_to_train
 file_dir = args.file_dir
 output_shape = args.output_shape
 class_num = args.class_num
+process_class = args.process_class
 
 # 保存模型!!!
 
@@ -44,7 +47,7 @@ class_num = args.class_num
 #                                patience=5,
 #                                min_lr=0.5e-6)
 
-x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate).get_train_data()
+x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate).get_train_data(process_class=process_class)
 y = keras.utils.to_categorical(y, num_classes=class_num)
 x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
 model = get_model(shape=output_shape, num_classes=class_num)
