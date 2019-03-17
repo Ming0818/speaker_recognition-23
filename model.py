@@ -10,9 +10,11 @@ from transformer import get_transformer
 
 def get_model(shape=(32, 1024), num_classes=500, model_type=0):
     if model_type == 0:
-        return resnet_v2(shape, num_classes)
+        return res_plus_transformer_model(shape, num_classes)
     elif model_type == 1:
         return simple_model(shape, num_classes)
+    elif model_type == 2:
+        return full_res_net_model(shape, num_classes)
     else:
         print("error")
 
@@ -53,6 +55,22 @@ def simple_model(shape=(32, 1024), num_classes=500):
     model.compile(loss=keras.losses.categorical_crossentropy,
                   optimizer=keras.optimizers.Adadelta(),
                   metrics=['accuracy'])
+    return model
+
+
+def full_res_net_model(shape=(32, 1024), num_classes=500):
+    input_array = keras.Input(shape)
+
+    three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
+    resnet_output = resnet_v2(inputs=three_d_input, n=1)
+    output = keras.layers.Dense(num_classes,
+                                activation='softmax')(resnet_output)
+
+    model = Model(inputs=input_array, outputs=output)
+    model.compile(loss=keras.losses.categorical_crossentropy,
+                  optimizer=keras.optimizers.Adadelta(),
+                  metrics=['accuracy'])
+    model.summary()
     return model
 
 

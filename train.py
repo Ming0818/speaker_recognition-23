@@ -1,13 +1,11 @@
 import argparse
 
+import keras
 import numpy as np
-from keras.callbacks import ModelCheckpoint, LearningRateScheduler, ReduceLROnPlateau
 from sklearn.model_selection import train_test_split
 
 from dataset import DataSet
 from model import get_model
-from resnet import lr_schedule
-import keras
 
 parser = argparse.ArgumentParser("speaker recognition", fromfile_prefix_chars='@')
 parser.add_argument('--file_dir', type=str, help='Directory to load data.')
@@ -20,8 +18,8 @@ parser.add_argument('-b', '--batch_size', type=int, default=16, help='Number of 
 parser.add_argument('-sr', '--sample_rate', type=int, default=16000, help='sample rate of wave')
 parser.add_argument('-c', '--class_num', type=int, default=103, help='class num of voice')
 parser.add_argument('-pc', '--process_class', type=int, default=0, help='class of process\' way')
-parser.add_argument('-mt', '--model_type', type=int, default=0, help='type of model')
-
+parser.add_argument('-mt', '--model_type', type=int, default=0,
+                    help='type of model.0:res_plus_transformer; 1.simple_cnn; 2.res_net')
 
 args = parser.parse_args()
 
@@ -49,7 +47,8 @@ model_type = args.model_type
 #                                patience=5,
 #                                min_lr=0.5e-6)
 
-x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate).get_train_data(process_class=process_class)
+x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate).get_train_data(
+    process_class=process_class)
 y = keras.utils.to_categorical(y, num_classes=class_num)
 x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
 model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type)
