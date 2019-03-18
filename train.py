@@ -65,4 +65,5 @@ model.fit(np.array(x), y,
           # callbacks=callbacks
           )
 
-model.save("./model")
+if model_path is not None:
+    model.save(model_path)
