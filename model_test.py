@@ -19,6 +19,11 @@ def model_simple_test(model_path, file_path, output_shape, sample_rate, process_
             done += 1
         index+=1
     anchor_vectors = get_vector(anchor, model)
+    anchor_vector = mean_vectors(anchor_vectors)
+
+    sample_vectors = get_vector(np.array(x), model)
+    result = distance(anchor_vector, )
+
 
 
 
