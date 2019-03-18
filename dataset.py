@@ -6,12 +6,14 @@ import numpy as np
 
 
 class DataSet:
-    def __init__(self, file_dir, output_shape, sample_rate):
+    def __init__(self, file_dir='', output_shape='', sample_rate=''):
         self.root_file_dir = file_dir
         self.label_dict = {}
         self.output_shape = output_shape
         self.sample_rate = sample_rate
-        self._set_label()
+
+
+
 
     def _set_label(self):
         file_list = os.listdir(self.root_file_dir)
@@ -20,6 +22,8 @@ class DataSet:
     def _read_data(self, file_dir, file_name):
         data, sr = librosa.load(os.path.join(self.root_file_dir, file_dir, file_name), sr=self.sample_rate)
         return data, sr
+
+
 
     def _mfcc_process(self, wave, sr):
         mfcc = librosa.feature.mfcc(wave, sr=sr, n_mfcc=self.output_shape[0])
@@ -61,11 +65,16 @@ class DataSet:
                 label_list.append(self.label_dict[file_dir])
         return file_list, label_list
 
-    def get_register_data(self) -> List:
+    def get_register_data(self , path) -> List:
         """
         返回注册成员的语音
         :return:
         """
+        data, sr = librosa.load(path, sr=self.sample_rate)
+
+        return data
+
+
         pass
 
     def get_test_data(self) -> List:

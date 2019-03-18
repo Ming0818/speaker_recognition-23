@@ -25,13 +25,13 @@ def get_model(shape=(32, 1024), num_classes=500):
                   optimizer="sgd",
                   metrics=['accuracy'])
     model.summary()
-    plot_model(model, to_file='model.png')
+    #plot_model(model, to_file='model.png')
     return model
 
 
-def load_model() -> keras.Model:
+def load_model(filePath) -> keras.Model:
     """
     返回训练好的模型
     :return:
     """
-    pass
+    return keras.models.load_model(filePath)
