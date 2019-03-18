@@ -9,25 +9,32 @@ parser = argparse.ArgumentParser("speaker recognition", fromfile_prefix_chars='@
 parser.add_argument('--file_dir', type=str, help='Directory of test data.')
 parser.add_argument('--model_path', type=str, help='Directory to load model.')
 parser.add_argument('-sr', '--sample_rate', type=int, default=16000, help='sample rate of wave')
+parser.add_argument('-s', '--output_shape', type=int, nargs=2, default=[32, 1024], help='shape')
 
 args = parser.parse_args()
 root_file = args.file_dir
 data_path = os.path.join(root_file , "data")
 model_path = args.model_path
 sample_rate = args.sample_rate
-
+output_shape = args.output_shape
 
 def get_group_feature():
     model = load_model(model_path)
     data = pd.read_csv(os.path.join(root_file, "enrollment.csv"))
-    dataset = DataSet(sample_rate=sample_rate)
+    dataset = DataSet(output_shape=output_shape, sample_rate=sample_rate)
+
     for name , group in data.groupby('GroupID' ,as_index=False):
         #print(group)
-
         for person , file in group.groupby('SpeakerID'):
+            li = []
             for i in file['FileID'].values:
                 #print(model.predict(wav2mfcc(os.path.join(data_path, i+'.wav'))))
-                model.predict(dataset.get_register_data(os.path.join(data_path, i+'.wav')))
+                arr = np.array(dataset.get_register_data(os.path.join(data_path, i + '.wav')))
+                print(model.predict(arr.reshape((1 , *arr.shape))).shape)
+                #li.append()
+
+
+
 
 
 
@@ -36,15 +43,6 @@ def get_group_feature():
 
         #print( avg(arr))
 
-
-
-
-
-
-
-
-def avg(arr):
-    print(arr)
 
 
 

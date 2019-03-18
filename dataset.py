@@ -95,11 +95,9 @@ class DataSet:
         返回注册成员的语音
         :return:
         """
-        data, sr = librosa.load(path, sr=self.sample_rate)
-
+        data = librosa.load(path, sr=self.sample_rate)
+        data = self._process_data(data, process_class = 1)
         return data
-
-
         pass
 
     def get_test_data(self) -> List:
