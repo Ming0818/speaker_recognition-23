@@ -15,11 +15,11 @@ def get_vector(wav_file_list, model: keras.Model):
     return model.predict(np.array(wav_file_list))
 
 
-def distance(anchor_vector, vectors: np.array, dis_type=0) -> List[float]:
+def distance(anchor_vector: np.array, vectors: np.array, dis_type=0) -> List[float]:
     """
     warning! No Zeros
-    :param anchor_vector:
-    :param vectors:
+    :param anchor_vector: shape(feature_length, )
+    :param vectors: shape(num_of_voice, feature_length)
     :param dis_type:
     :return:
     """
