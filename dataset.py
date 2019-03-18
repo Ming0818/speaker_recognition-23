@@ -1,6 +1,5 @@
 import os
 from typing import List, Tuple
-from sklearn.preprocessing import normalize
 
 import librosa
 import numpy as np
@@ -75,7 +74,7 @@ class DataSet:
 
         return data
 
-    def get_train_data(self, process_class=0) -> Tuple[List[List[float, ]], List[int, ]]:
+    def get_train_data(self, process_class=0) -> Tuple[List[List[float,]], List[int,]]:
         self._set_label()
         file_list = []
         label_list = []
@@ -87,11 +86,14 @@ class DataSet:
                 label_list.append(self.label_dict[file_dir])
         return file_list, label_list
 
-    def get_register_data(self) -> List:
+    def get_register_data(self, path) -> List:
         """
         返回注册成员的语音
         :return:
         """
+        data = librosa.load(path, sr=self.sample_rate)
+        data = self._process_data(data, process_class=1)
+        return data
         pass
 
     def get_test_data(self) -> List:

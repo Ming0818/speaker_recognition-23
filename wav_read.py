@@ -12,4 +12,4 @@ def wav2mfcc(file_path, max_pad_len=150):
 
 
 if __name__ == '__main__':
-    wav2mfcc("")
+    wav2mfcc(r"C:\Users\18140\Desktop\wav\D1048\ID1048W0001.wav")

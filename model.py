@@ -39,8 +39,9 @@ def res_plus_transformer_model(shape=(32, 1024), num_classes=500):
                   optimizer="sgd",
                   metrics=['accuracy'])
     model.summary()
-    plot_model(model, to_file='model.png')
+    #plot_model(model, to_file='model.png')
     return model
+
 
 
 def simple_model(shape=(32, 1024), num_classes=500):
@@ -76,6 +77,7 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1):
 
 
 def load_model(model_path) -> keras.Model:
+
     """
     返回训练好的模型
     :return:
