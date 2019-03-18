@@ -2,11 +2,10 @@ import keras
 from keras import Model
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
 from keras.models import Sequential
-from keras.utils import plot_model
 
+from loss import l2_softmax
 from resnet import resnet_v2
 from transformer import get_transformer
-from loss import l2_softmax
 
 
 def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
@@ -39,9 +38,8 @@ def res_plus_transformer_model(shape=(32, 1024), num_classes=500):
                   optimizer="sgd",
                   metrics=['accuracy'])
     model.summary()
-    #plot_model(model, to_file='model.png')
+    # plot_model(model, to_file='model.png')
     return model
-
 
 
 def simple_model(shape=(32, 1024), num_classes=500):
@@ -60,13 +58,14 @@ def simple_model(shape=(32, 1024), num_classes=500):
     return model
 
 
-def full_res_net_model(shape=(32, 1024), num_classes=500, n=1):
-    input_array = keras.Input(shape)
+def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_lenth=100):
+    input_array = keras.Input(shape, name='input')
 
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
-    output = keras.layers.Dense(num_classes,
-                                activation='softmax')(resnet_output)
+    mid = keras.layers.Dense(feature_lenth, activation='sigmoid', name="feature_layer")(resnet_output)
+    # drop_out = Dropout(0.0)(mid)
+    output = keras.layers.Dense(num_classes, activation='softmax')(mid)
 
     model = Model(inputs=input_array, outputs=output)
     model.compile(loss=keras.losses.categorical_crossentropy,
@@ -76,10 +75,15 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1):
     return model
 
 
-def load_model(model_path) -> keras.Model:
-
+def load_model(model_path, model_type=0) -> keras.Model:
     """
     返回训练好的模型
     :return:
     """
-    return keras.models.load_model(model_path)
+    if model_type == 0:
+        return keras.models.load_model(model_path)
+    else:
+        model = keras.models.load_model(model_path)
+        output = model.get_layer('feature_layer').output
+        new_model = Model(inputs=model.input, outputs=output)
+        return new_model

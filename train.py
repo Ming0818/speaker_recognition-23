@@ -59,8 +59,6 @@ model = get_model(shape=output_shape, num_classes=class_num, model_type=model_ty
 
 model.fit(np.array(x), y,
           batch_size=batch_size,
-          steps_per_epoch=10,
-          validation_steps=10,
           epochs=epochs,
           validation_data=(np.array(x_test), y_test),
           shuffle=True,
