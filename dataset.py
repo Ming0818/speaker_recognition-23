@@ -12,14 +12,13 @@ class DataSet:
         self.label_dict = {}
         self.output_shape = output_shape
         self.sample_rate = sample_rate
-        self._set_label()
 
     def _set_label(self):
         file_list = os.listdir(self.root_file_dir)
         self.label_dict = dict(zip(file_list, range(len(file_list))))
 
-    def _read_data(self, file_dir, file_name):
-        data, sr = librosa.load(os.path.join(self.root_file_dir, file_dir, file_name), sr=self.sample_rate)
+    def _read_data(self, file_path):
+        data, sr = librosa.load(os.path.join(self.root_file_dir, file_path), sr=self.sample_rate)
         return data, sr
 
     @staticmethod
@@ -76,12 +75,13 @@ class DataSet:
 
         return data
 
-    def get_train_data(self, process_class=0) -> Tuple[List[List[float,]], List[int,]]:
+    def get_train_data(self, process_class=0) -> Tuple[List[List[float, ]], List[int, ]]:
+        self._set_label()
         file_list = []
         label_list = []
         for file_dir in self.label_dict.keys():
             for file in os.listdir(os.path.join(self.root_file_dir, file_dir)):
-                data = self._read_data(file_dir, file)
+                data = self._read_data(os.path.join(file_dir, file))
                 data = self._process_data(data, process_class)
                 file_list.append(data)
                 label_list.append(self.label_dict[file_dir])

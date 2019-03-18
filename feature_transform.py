@@ -32,5 +32,9 @@ def distance(anchor_vector: np.array, vectors: np.array, dis_type=0) -> List[flo
         return result
 
 
+def mean_vectors(vectors):
+    return np.mean(vectors)
+
+
 if __name__ == '__main__':
     print(distance(np.ones(shape=(10,)), np.ones(shape=(10, 10))))

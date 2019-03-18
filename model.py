@@ -75,9 +75,9 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1):
     return model
 
 
-def load_model() -> keras.Model:
+def load_model(model_path) -> keras.Model:
     """
     返回训练好的模型
     :return:
     """
-    pass
+    return keras.models.load_model(model_path)
