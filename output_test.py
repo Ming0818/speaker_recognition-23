@@ -4,6 +4,7 @@ import os
 from dataset import DataSet
 import numpy as np
 from model import load_model
+from feature_transform import mean_vectors
 import keras
 parser = argparse.ArgumentParser("speaker recognition", fromfile_prefix_chars='@')
 parser.add_argument('--file_dir', type=str, help='Directory of test data.')
@@ -21,17 +22,28 @@ output_shape = args.output_shape
 def get_group_feature():
     model = load_model(model_path)
     data = pd.read_csv(os.path.join(root_file, "enrollment.csv"))
-    dataset = DataSet(output_shape=output_shape, sample_rate=sample_rate)
+    dataset = DataSet(file_dir= '', output_shape=output_shape, sample_rate=sample_rate)
 
+    rows_list = []
     for name , group in data.groupby('GroupID' ,as_index=False):
-        #print(group)
+
         for person , file in group.groupby('SpeakerID'):
             li = []
             for i in file['FileID'].values:
                 #print(model.predict(wav2mfcc(os.path.join(data_path, i+'.wav'))))
                 arr = np.array(dataset.get_register_data(os.path.join(data_path, i + '.wav')))
-                print(model.predict(arr.reshape((1 , *arr.shape))).shape)
-                #li.append()
+                li.append(model.predict(arr.reshape((1 , *arr.shape))))
+
+            personLi = [person]
+            personLi.extend((mean_vectors(li)[0]))
+            groupLi = [name]
+            groupLi.extend(personLi)
+            rows_list.append(groupLi)
+    res = pd.DataFrame(rows_list)
+    print(res)
+    res.to_csv(os.path.join(root_file , 'enroll.csv'))
+    return rows_list
+
 
 
 
