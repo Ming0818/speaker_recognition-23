@@ -23,7 +23,7 @@ output_shape = args.output_shape
 
 
 def get_group_feature():
-    model = load_model(model_path)
+    model = load_model(model_path, model_type=1)
     data = pd.read_csv(os.path.join(root_file, "enrollment.csv"))
     dataset = DataSet(file_dir='', output_shape=output_shape, sample_rate=sample_rate)
 

@@ -98,15 +98,14 @@ class DataSet:
 
     # def get_
 
-    def get_register_data(self, path) -> List:
+    def get_register_data(self, path, process_class=1) -> List:
         """
         返回注册成员的语音
         :return:
         """
         data = librosa.load(path, sr=self.sample_rate)
-        data = self._process_data(data, process_class=1)
+        data = self._process_data(data, process_class=process_class)
         return data
-        pass
 
     def get_test_data(self) -> List:
         """

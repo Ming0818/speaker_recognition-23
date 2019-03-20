@@ -2,7 +2,7 @@ import argparse
 
 import keras
 import numpy as np
-from keras.callbacks import ModelCheckpoint
+from keras.callbacks import ModelCheckpoint, TensorBoard
 from sklearn.model_selection import train_test_split
 
 from dataset import DataSet
@@ -40,6 +40,10 @@ net_depth = args.net_depth
 
 # 保存模型!!!
 
+tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=16, write_graph=True, write_grads=False,
+                          write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None,
+                          embeddings_data=None, update_freq='epoch')
+
 checkpoint = ModelCheckpoint(filepath='./weights.{epoch:02d}-{val_loss:.2f}.hdf5',
                              monitor='val_acc',
                              verbose=1,
@@ -56,7 +60,8 @@ x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_
     process_class=process_class)
 y = keras.utils.to_categorical(y, num_classes=class_num)
 x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
-model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth, feature_length=args.feature_length)
+model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth,
+                  feature_length=args.feature_length)
 callbacks = [checkpoint]
 
 model.fit(np.array(x), y,
@@ -67,7 +72,5 @@ model.fit(np.array(x), y,
           callbacks=callbacks
           )
 
-
 if model_path is not None:
     model.save(model_path)
-

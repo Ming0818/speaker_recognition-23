@@ -70,7 +70,7 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=10
     output = keras.layers.Dense(num_classes, activation='softmax')(mid)
 
     model = Model(inputs=input_array, outputs=output)
-    model.compile(loss=l2_softmax(10),
+    model.compile(loss=l2_softmax(18),
                   optimizer=keras.optimizers.Adadelta(),
                   metrics=['accuracy'])
     model.summary()
