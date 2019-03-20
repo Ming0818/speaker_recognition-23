@@ -15,6 +15,8 @@ def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
         return simple_model(shape, num_classes)
     elif model_type == 2:
         return full_res_net_model(shape, num_classes, **kwargs)
+    elif model_type == 3:
+        return full_transformer(shape=shape, num_classes=num_classes)
     else:
         print("error")
 
@@ -58,14 +60,32 @@ def simple_model(shape=(32, 1024), num_classes=500):
     return model
 
 
-def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_lenth=100):
+def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100):
     input_array = keras.Input(shape, name='input')
 
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
-    mid = keras.layers.Dense(feature_lenth, activation='sigmoid', name="feature_layer")(resnet_output)
-    # drop_out = Dropout(0.0)(mid)
+    mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
+    # mid = Dropout(0.3)(mid)
     output = keras.layers.Dense(num_classes, activation='softmax')(mid)
+
+    model = Model(inputs=input_array, outputs=output)
+    model.compile(loss=l2_softmax(10),
+                  optimizer=keras.optimizers.Adadelta(),
+                  metrics=['accuracy'])
+    model.summary()
+    return model
+
+
+def full_transformer(shape=(32, 1024), num_classes=500, feature_length=100):
+    input_array = keras.Input(shape)
+
+    transformer_output = keras.layers.Flatten()(get_transformer(transformer_input=input_array, transformer_depth=3))
+    mid = keras.layers.Dense(feature_length, activation='relu', name="feature_layer")(transformer_output)
+
+    output = keras.layers.Dense(num_classes,
+                                activation='sigmoid',
+                                kernel_initializer='he_normal')(mid)
 
     model = Model(inputs=input_array, outputs=output)
     model.compile(loss=keras.losses.categorical_crossentropy,
@@ -83,7 +103,7 @@ def load_model(model_path, model_type=0) -> keras.Model:
     if model_type == 0:
         return keras.models.load_model(model_path)
     else:
-        model = keras.models.load_model(model_path)
+        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(5)})
         output = model.get_layer('feature_layer').output
         new_model = Model(inputs=model.input, outputs=output)
         return new_model

@@ -2,6 +2,7 @@ import argparse
 
 import keras
 import numpy as np
+from keras.callbacks import ModelCheckpoint
 from sklearn.model_selection import train_test_split
 
 from dataset import DataSet
@@ -22,6 +23,7 @@ parser.add_argument('-mt', '--model_type', type=int, default=0,
                     help='type of model.0:res_plus_transformer; 1.simple_cnn; 2.res_net')
 parser.add_argument('-n', '--net_depth', type=int, default=1,
                     help='net depth of res_net')
+parser.add_argument('-fl', '--feature_length', type=int, default=200, help='feature length')
 
 args = parser.parse_args()
 
@@ -38,10 +40,10 @@ net_depth = args.net_depth
 
 # 保存模型!!!
 
-# checkpoint = ModelCheckpoint(filepath=filepath,
-#                              monitor='val_acc',
-#                              verbose=1,
-#                              save_best_only=True)
+checkpoint = ModelCheckpoint(filepath='./weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+                             monitor='val_acc',
+                             verbose=1,
+                             save_best_only=False)
 
 # lr_scheduler = LearningRateScheduler(lr_schedule)
 #
@@ -54,15 +56,15 @@ x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_
     process_class=process_class)
 y = keras.utils.to_categorical(y, num_classes=class_num)
 x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
-model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth)
-# callbacks = [lr_reducer, lr_scheduler]
+model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth, feature_length=args.feature_length)
+callbacks = [checkpoint]
 
 model.fit(np.array(x), y,
           batch_size=batch_size,
           epochs=epochs,
           validation_data=(np.array(x_test), y_test),
           shuffle=True,
-          # callbacks=callbacks
+          callbacks=callbacks
           )
 
 

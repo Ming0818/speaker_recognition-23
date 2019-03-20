@@ -40,3 +40,6 @@ prediction/
 *.tmp
 basic_model/classifiers/catboost_info/
 model
+*.hdf5
+*.zip
+*.7z

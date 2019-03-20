@@ -27,27 +27,25 @@ def model_simple_test(model_path, file_path, output_shape, sample_rate, process_
     anchor_vector = mean_vectors(anchor_vectors)
 
     sample_vectors = get_vector(np.array(x), model)
-    result = distance(anchor_vector, sample_vectors)
+    result = distance(anchor_vector, sample_vectors, dis_type=1)
     acc_score(y, result)
-    fpr, tpr, thresholds = metrics.roc_curve(y, result, pos_label=0)
+    fpr, tpr, thresholds = metrics.roc_curve(y, result, pos_label=1)
     auc = metrics.auc(fpr, tpr)
     print("auc:", auc)
     return auc
 
 
 def acc_score(y, y_prediction):
-    s_l = sorted(list(zip(y, y_prediction)), key=lambda x: x[1])
+    s_l = sorted(list(zip(y, y_prediction)), key=lambda x: x[1], reverse=True)
     true_pos = 0
     true_neg = 0
     for i in range(len(s_l)):
-        if i < len(s_l)/2 and s_l[i][0] == 1:
-            true_pos +=1
-        elif i >= len(s_l)/2 and s_l[i][0] == 0:
+        if i < len(s_l) / 2 and s_l[i][0] == 1:
+            true_pos += 1
+        elif i >= len(s_l) / 2 and s_l[i][0] == 0:
             true_neg += 1
 
-    print("acc:", (true_neg+true_pos)/len(s_l))
-
-
+    print("acc:", (true_neg + true_pos) / len(s_l))
 
 
 if __name__ == '__main__':

@@ -1,6 +1,7 @@
 import os
 from typing import List, Tuple
 
+import acoustics
 import librosa
 import numpy as np
 
@@ -47,7 +48,14 @@ class DataSet:
             pad_num = full_num_needed - len(wave)
             wave = np.pad(wave, (0, pad_num), 'mean')
         wave = wave.reshape(self.output_shape)
-        return wave
+        return DataSet._normalize_data(wave)
+
+    def _add_white_noise_and_segment(self, wave, sr):
+        if np.random.rand() < 0.5:
+            return self._segment_process(np.add(wave, np.array(((acoustics.generator.noise(sr * 90, color='white')) / 3) * 5000).astype(np.int16)[
+                         :len(wave)]), sr)
+        else:
+            return self._segment_process(wave, sr)
 
     def _save_to_npy(self):
         labels = os.listdir(self.root_file_dir)
@@ -71,6 +79,8 @@ class DataSet:
             return self._mfcc_process(data, sr=sr)
         elif process_class == 1:
             return self._segment_process(data, sr=sr)
+        elif process_class == 2:
+            return self._add_white_noise_and_segment(data, sr)
 
         return data
 
@@ -85,6 +95,8 @@ class DataSet:
                 file_list.append(data)
                 label_list.append(self.label_dict[file_dir])
         return file_list, label_list
+
+    # def get_
 
     def get_register_data(self, path) -> List:
         """

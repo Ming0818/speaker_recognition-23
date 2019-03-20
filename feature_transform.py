@@ -25,15 +25,17 @@ def distance(anchor_vector: np.array, vectors: np.array, dis_type=0) -> List[flo
     """
 
     result = []
-    if dis_type == 0:
-        # dist = 1.0 - uv / np.sqrt(uu * vv)
-        for i in range(vectors.shape[0]):
+    # dist = 1.0 - uv / np.sqrt(uu * vv)
+    for i in range(vectors.shape[0]):
+        if dis_type == 0:
             result.append(scipy.spatial.distance.cosine(anchor_vector, vectors[i]))
-        return result
+        elif dis_type == 1:
+            result.append(scipy.spatial.distance.euclidean(anchor_vector, vectors[i]))
+    return result
 
 
 def mean_vectors(vectors):
-    return np.mean(vectors , axis=0)
+    return np.mean(vectors, axis=0)
 
 
 if __name__ == '__main__':
