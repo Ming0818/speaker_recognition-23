@@ -30,3 +30,19 @@ def contrastive_loss(y_true, y_pred):
     square_pred = K.square(y_pred)
     margin_square = K.square(K.maximum(margin - y_pred, 0))
     return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
+
+def identity_loss(y_true, y_pred):
+
+    return K.mean(y_pred - 0 * y_true)
+
+
+def bpr_triplet_loss(X):
+
+    positive_item_latent, negative_item_latent, user_latent = X
+
+    # BPR loss
+    loss = 1.0 - K.sigmoid(
+        K.sum(user_latent * positive_item_latent, axis=-1, keepdims=True) -
+        K.sum(user_latent * negative_item_latent, axis=-1, keepdims=True))
+
+    return loss

@@ -1,6 +1,7 @@
 import keras
-from keras import Model
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D
+import keras.backend as K
+from keras import Model, Input
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda
 from keras.models import Sequential
 
 from loss import l2_softmax
@@ -17,6 +18,8 @@ def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
         return full_res_net_model(shape, num_classes, **kwargs)
     elif model_type == 3:
         return full_transformer(shape=shape, num_classes=num_classes)
+    elif model_type == 4:
+        return res_with_center_loss_model(shape, num_classes, **kwargs)
     else:
         print("error")
 
@@ -60,21 +63,39 @@ def simple_model(shape=(32, 1024), num_classes=500):
     return model
 
 
-def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100):
+def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15):
     input_array = keras.Input(shape, name='input')
 
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
     mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
     # mid = Dropout(0.3)(mid)
-    output = keras.layers.Dense(num_classes, activation='softmax')(mid)
+    output = keras.layers.Dense(num_classes, activation='softmax', name="output_layer")(mid)
 
     model = Model(inputs=input_array, outputs=output)
-    model.compile(loss=l2_softmax(18),
+    model.compile(loss=l2_softmax(l2_sm),
                   optimizer=keras.optimizers.Adadelta(),
                   metrics=['accuracy'])
     model.summary()
     return model
+
+
+def res_with_center_loss_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, lambda_c=0.2):
+    origin_model = full_res_net_model(shape, num_classes, n, feature_length, l2_sm)
+    origin_input = origin_model.input
+    origin_feature_output = origin_model.get_layer('feature_layer').output
+    origin_output = origin_model.get_layer('output_layer').output
+
+    input_target = Input(shape=(1,))
+    centers = Embedding(num_classes, feature_length)(input_target)
+    l2_loss = Lambda(lambda x: K.sum(K.square(x[0] - x[1][:, 0]), 1, keepdims=True), name='l2_loss')(
+        [origin_feature_output, centers])
+
+    model_center_loss = Model(inputs=[origin_input, input_target], outputs=[origin_output, l2_loss])
+    model_center_loss.compile(optimizer=keras.optimizers.Adadelta(),
+                              loss=[l2_softmax(l2_sm), lambda y_true, y_pred: y_pred],
+                              loss_weights=[1, lambda_c], metrics=['accuracy'])
+    return model_center_loss
 
 
 def full_transformer(shape=(32, 1024), num_classes=500, feature_length=100):
