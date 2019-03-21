@@ -116,6 +116,7 @@ def full_transformer(shape=(32, 1024), num_classes=500, feature_length=100):
     return model
 
 
+
 def load_model(model_path, model_type=0) -> keras.Model:
     """
     返回训练好的模型
@@ -123,7 +124,15 @@ def load_model(model_path, model_type=0) -> keras.Model:
     """
     if model_type == 0:
         return keras.models.load_model(model_path)
-    else:
+    elif model_type == 2:
+        def temp(a, b):
+            return b
+        # lam = Lambda(lambda x: K.sum(K.square(x[0] - x[1][:, 0]), 1, keepdims=True), name='l2_loss')
+        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(5), '<lambda>':temp})
+        output = model.get_layer('feature_layer').output
+        new_model = Model(inputs=model.get_layer('input').input, outputs=output)
+        return new_model
+    elif model_type == 1:
         model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(5)})
         output = model.get_layer('feature_layer').output
         new_model = Model(inputs=model.input, outputs=output)
