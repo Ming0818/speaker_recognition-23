@@ -107,12 +107,11 @@ class DataSet:
         data = self._process_data(data, process_class=process_class)
         return data
 
-    def get_test_data(self) -> List:
-        """
-        返回需要判断的几个成员的语音
-        :return:
-        """
-        pass
+    def get_test_data(self, path, process_class=1) -> List:
+        data = librosa.load(path, sr=self.sample_rate)
+        data = self._process_data(data, process_class=process_class)
+        return data
+
 
 
 if __name__ == '__main__':
