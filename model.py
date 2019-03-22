@@ -63,7 +63,7 @@ def simple_model(shape=(32, 1024), num_classes=500):
     return model
 
 
-def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15):
+def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
     input_array = keras.Input(shape, name='input')
 
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
@@ -87,7 +87,7 @@ def res_with_center_loss_model(shape=(32, 1024), num_classes=500, n=1, feature_l
     origin_output = origin_model.get_layer('output_layer').output
 
     input_target = Input(shape=(1,))
-    centers = Embedding(num_classes, feature_length)(input_target)
+    centers = Embedding(num_classes, feature_length, name='embedding_layer')(input_target)
     l2_loss = Lambda(lambda x: K.sum(K.square(x[0] - x[1][:, 0]), 1, keepdims=True), name='l2_loss')(
         [origin_feature_output, centers])
 
@@ -116,24 +116,23 @@ def full_transformer(shape=(32, 1024), num_classes=500, feature_length=100):
     return model
 
 
-
 def load_model(model_path, model_type=0) -> keras.Model:
     """
     返回训练好的模型
     :return:
     """
+    def temp(a, b):
+        return b
+
     if model_type == 0:
-        return keras.models.load_model(model_path)
+        return keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10), '<lambda>': temp})
     elif model_type == 2:
-        def temp(a, b):
-            return b
-        # lam = Lambda(lambda x: K.sum(K.square(x[0] - x[1][:, 0]), 1, keepdims=True), name='l2_loss')
-        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(5), '<lambda>':temp})
+        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10), '<lambda>': temp})
         output = model.get_layer('feature_layer').output
         new_model = Model(inputs=model.get_layer('input').input, outputs=output)
         return new_model
     elif model_type == 1:
-        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(5)})
+        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10)})
         output = model.get_layer('feature_layer').output
         new_model = Model(inputs=model.input, outputs=output)
         return new_model

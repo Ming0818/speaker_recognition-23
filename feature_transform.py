@@ -62,6 +62,6 @@ def get_mean_feature_for_device(path, model_path, output_shape, sample_rate, pro
 
 
 if __name__ == '__main__':
-    y = get_mean_feature_for_device(model_path="./weights.08-2.91.hdf5", path="D:\\af2019-sr-devset-20190312",
-                                output_shape=(32, 1024), sample_rate=16000)
+    y = get_mean_feature_for_device(model_path="./models/weights.04-6.36.hdf5", path="D:\\af2019-sr-devset-20190312",
+                                    output_shape=(32, 1024), sample_rate=16000)
     print(y)
