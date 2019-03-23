@@ -80,4 +80,4 @@ if __name__ == '__main__':
     net_depth = args.net_depth
 
     model_simple_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
-                      process_class=process_class, model_type=1)
+                      process_class=process_class, model_type=model_type)
