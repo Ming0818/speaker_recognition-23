@@ -45,7 +45,7 @@ def get_group_feature():
             groupLi.extend(personLi)
             rows_list.append(groupLi)
     res = pd.DataFrame(rows_list)
-    #print(res)
+    # print(res)
     res.to_csv(os.path.join(root_file, 'enroll.csv'))
     return rows_list
 
@@ -57,8 +57,8 @@ def save_test():
     """
     return
 
-def test_output(if_handle_device = False):
 
+def test_output(is_handle_device=False):
     model = load_model(model_path, model_type=1)
     data = pd.read_csv(os.path.join(root_file, "test.csv"))
     dataset = DataSet(file_dir='', output_shape=output_shape, sample_rate=sample_rate)
@@ -66,91 +66,82 @@ def test_output(if_handle_device = False):
     rows_list = []
     device_arr = get_mean_feature_for_device(model_path=model_path, path=root_file,
                                              output_shape=output_shape, sample_rate=sample_rate)
-
-    for group , attack in data.groupby("DeviceID"):
+    for group, attack in data.groupby("DeviceID"):
 
         cur_device_type_arr = []
         fileLi = attack["FileID"].values
         groupID = attack["GroupID"].values
-        #wav_data = dataset.get_test_data(os.path.join(data_path, attack["FileID"] + ".wav"))
-        #arr = np.array(wav_data)
+        # wav_data = dataset.get_test_data(os.path.join(data_path, attack["FileID"] + ".wav"))
+        # arr = np.array(wav_data)
 
         for i in fileLi:
-
-            #tester = [row["GroupID"], row["FileID"]]
-            #print(row["DeviceID"] , row["FileID"])
+            # tester = [row["GroupID"], row["FileID"]]
+            # print(row["DeviceID"] , row["FileID"])
             wav_data = dataset.get_test_data(os.path.join(data_path, i + ".wav"))
-            #print(np.array(wav_data).shape)
+            # print(np.array(wav_data).shape)
             cur_device_type_arr.append(wav_data)
         arr = np.array(cur_device_type_arr)
         model_predict_data = model.predict(arr)
-        print(model_predict_data.shape)
-        print(model_predict_data.shape[0])
-        if group == 1:
-            diff = device_arr[1] - device_arr[0]
-            diff = diff.reshape(1 , diff.shape[0])
-            model_predict_data = model_predict_data + diff.repeat(model_predict_data.shape[0] , axis=0)
+        if is_handle_device:
+            if group == 1:
+                diff = device_arr[1] - device_arr[0]
+                diff = diff.reshape(1, diff.shape[0])
+                model_predict_data = model_predict_data + diff.repeat(model_predict_data.shape[0], axis=0)
 
         arr = np.r_[fileLi.reshape(1, fileLi.shape[0]), groupID.reshape(1, groupID.shape[0])]
-        print(arr.shape)
         arr = arr.T
-        arr = np.c_[arr , model_predict_data]
-
-        print(arr.shape)
+        arr = np.c_[arr, model_predict_data]
 
         if group == 1:
-            pd.DataFrame(arr).to_csv(os.path.join(root_file , "attack_device_1.csv"))
+            pd.DataFrame(arr).to_csv(os.path.join(root_file, "attack_device_1.csv"))
         if group == 0:
-            pd.DataFrame(arr).to_csv(os.path.join(root_file , "attack_device_0.csv"))
-
-        attacker_1 = pd.read_csv(os.path.join(root_file, "attack_device_1.csv"), index_col=0)
-        attacker_0 = pd.read_csv(os.path.join(root_file, "attack_device_0.csv"), index_col=0)
-
-
+            pd.DataFrame(arr).to_csv(os.path.join(root_file, "attack_device_0.csv"))
 
 
 def get_min_distance():
-    enroll = pd.read_csv(os.path.join(root_file , "enroll.csv") , index_col=0)
-    attacker = pd.read_csv(os.path.join(root_file , "attack_feature.csv") , index_col=0)
-    #print(attacker.columns)
+    enroll = pd.read_csv(os.path.join(root_file, "enroll.csv"), index_col=0)
+    attacker = pd.read_csv(os.path.join(root_file, "attack_feature.csv"), index_col=0)
+    # print(attacker.columns)
 
     res = pd.DataFrame()
-    for name , group in attacker.groupby("1") :
+    for name, group in attacker.groupby("1"):
         li = []
         fileLi = group["0"].values
         groupID = group["1"].values
         for i in group.values:
             attacker_feature = i[2:]
-            #print(len(attacker_feature))
+            # print(len(attacker_feature))
             group_id = i[1]
             file_id = i[0]
-            #print(group_id , file_id)
+            # print(group_id , file_id)
 
             group_features = np.array(enroll[enroll["0"] == group_id].loc[:, "2":])
             attacker_feature = attacker_feature.astype("float64")
-            dis = distance(attacker_feature ,group_features)
+            dis = distance(attacker_feature, group_features)
             li.append(min(dis))
 
         arr = np.r_[fileLi.reshape(1, fileLi.shape[0]), groupID.reshape(1, groupID.shape[0])]
-        #print(arr.shape)
+        # print(arr.shape)
         arr = arr.T
         arr = np.c_[arr, li]
         df = pd.DataFrame(arr)
-        df.columns = ['fileID', 'group' , 'dis']
+        df.columns = ['fileID', 'group', 'dis']
         df["is_member"] = "N"
-        mean = np.mean(df["dis"])
-        df.loc[df["dis"] < mean , "is_member"] = "Y"
-        res = pd.concat([res , df] , axis=0)
-    res = res.loc[:,["fileID" , "is_member"]]
-    print(res)
-    res.columns = ["FileID","IsMember"]
-    res.to_csv(os.path.join(root_file , "submit.csv") , index=False)
+        df["dis"] = df["dis"].astype("float64")
+        # mean = np.mean(df["dis"])
+        # print(mean)
+        # df.loc[df["dis"] < mean, "is_member"] = "Y"
+        top50 = np.array(df["dis"].values)
+        top50 = np.sort(top50 , axis=0)[50]
+        #print(df[df["dis"] <= top50].loc[:,"is_member"])
+        df.loc[df["dis"] <= top50,"is_member"] = "Y"
+        print(df)
 
-
-
-
-
-
+        res = pd.concat([res, df], axis=0)
+    res = res.loc[:, ["fileID", "is_member"]]
+    # print(res)
+    res.columns = ["FileID", "IsMember"]
+    res.to_csv(os.path.join(root_file, "submit.csv"), index=False)
 
     # for index , row in attacker.iterrows():
     #     group = row[1]
@@ -158,18 +149,6 @@ def get_min_distance():
     #     attack_feature = row[3:].values
     #     group_features = np.array(enroll[enroll["0"] == group].loc[: , "2" : ])
     #     distance(attack_feature ,group_features)
-
-
-
-
-
-
-
-
-
-
-
-
 
     #     for person, file in group.groupby('SpeakerID'):
     #         li = []
@@ -189,15 +168,13 @@ def get_min_distance():
     # return rows_list
 
 
-
-
-
 if __name__ == '__main__':
-    arr = get_min_distance()
-    #enroll = pd.read_csv(os.path.join(root_file, "enroll.csv") , index_col=0)
-    #test_output()
-    # device_arr = get_mean_feature_for_device(model_path=model_path, path=root_file,
-    #                                          output_shape=output_shape, sample_rate=sample_rate)
+    # test_output(is_handle_device=False)
     # attacker_1 = pd.read_csv(os.path.join(root_file, "attack_device_1.csv"), index_col=0)
     # attacker_0 = pd.read_csv(os.path.join(root_file, "attack_device_0.csv"), index_col=0)
-    # pd.concat([attacker_0 , attacker_1] , axis=0).to_csv(os.path.join(root_file, "attack_feature.csv"))
+    # pd.concat([attacker_0, attacker_1], axis=0).to_csv(os.path.join(root_file, "attack_feature.csv"))
+    get_min_distance()
+    # enroll = pd.read_csv(os.path.join(root_file, "enroll.csv") , index_col=0)
+    # test_output()
+    # device_arr = get_mean_feature_for_device(model_path=model_path, path=root_file,
+    #                                          output_shape=output_shape, sample_rate=sample_rate)
