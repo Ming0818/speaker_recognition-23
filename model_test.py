@@ -6,6 +6,8 @@ from sklearn import metrics
 from dataset import DataSet
 from feature_transform import get_vector, distance, mean_vectors
 from model import load_model
+import pandas as pd
+import matplotlib.pyplot as plt
 
 
 def model_simple_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
@@ -27,9 +29,17 @@ def model_simple_test(model_path, file_path, output_shape, sample_rate, process_
     anchor_vector = mean_vectors(anchor_vectors)
 
     sample_vectors = get_vector(np.array(x), model)
-    result = distance(anchor_vector, sample_vectors, dis_type=1)
+    result = distance(anchor_vector, sample_vectors, dis_type=0)
+
+    # k = pd.Series(result)
+    # k.mean()
+    # k.hist()
+    # plt.show()
+
     acc_score(y, result)
     fpr, tpr, thresholds = metrics.roc_curve(y, result, pos_label=1)
+    # print(fpr, tpr, thresholds)
+    # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
     auc = metrics.auc(fpr, tpr)
     print("auc:", auc)
     return auc

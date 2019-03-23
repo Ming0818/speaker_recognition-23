@@ -1,7 +1,7 @@
 import keras
 import keras.backend as K
 from keras import Model, Input
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda, BatchNormalization
 from keras.models import Sequential
 
 from loss import l2_softmax
@@ -54,9 +54,9 @@ def simple_model(shape=(32, 1024), num_classes=500):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.5))
     model.add(Flatten())
-    model.add(Dense(128, activation='relu'))
+    model.add(Dense(128, activation='relu', name="feature_layer"))
     model.add(Dropout(0.5))
-    model.add(Dense(num_classes, activation='softmax'))
+    model.add(Dense(num_classes, activation='softmax', name="output_layer"))
     model.compile(loss=keras.losses.categorical_crossentropy,
                   optimizer=keras.optimizers.Adadelta(),
                   metrics=['accuracy'])
@@ -68,8 +68,10 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=10
 
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
-    mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
+    resnet_output = BatchNormalization()(resnet_output)
+    mid = keras.layers.Dense(feature_length, activation='relu', name="feature_layer")(resnet_output)
     # mid = Dropout(0.3)(mid)
+    mid = BatchNormalization()(mid)
     output = keras.layers.Dense(num_classes, activation='softmax', name="output_layer")(mid)
 
     model = Model(inputs=input_array, outputs=output)
@@ -102,7 +104,8 @@ def full_transformer(shape=(32, 1024), num_classes=500, feature_length=100):
     input_array = keras.Input(shape)
 
     transformer_output = keras.layers.Flatten()(get_transformer(transformer_input=input_array, transformer_depth=3))
-    mid = keras.layers.Dense(feature_length, activation='relu', name="feature_layer")(transformer_output)
+    btchn = BatchNormalization()(transformer_output)
+    mid = keras.layers.Dense(feature_length, activation='relu', name="feature_layer")(btchn)
 
     output = keras.layers.Dense(num_classes,
                                 activation='sigmoid',
