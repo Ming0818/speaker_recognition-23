@@ -9,6 +9,14 @@ import scipy
 from dataset import DataSet
 from model import load_model
 
+def is_member(dis):
+    """
+
+    :param dis: min dis to group
+    :return: is member boolean
+    """
+    pass
+
 
 def get_vector(wav_file_list, model: keras.Model):
     """
@@ -62,6 +70,7 @@ def get_mean_feature_for_device(path, model_path, output_shape, sample_rate, pro
 
 
 if __name__ == '__main__':
-    y = get_mean_feature_for_device(model_path="C:\\Users\\18140\\Desktop\\model\\weights.05-4.37.hdf5", path="C:\\Users\\18140\Desktop\\af2019-sr-devset-20190312",
-                                output_shape=(32, 1024), sample_rate=16000)
-    print(y)
+    # y = get_mean_feature_for_device(model_path="C:\\Users\\18140\\Desktop\\model\\weights.05-4.37.hdf5", path="C:\\Users\\18140\Desktop\\af2019-sr-devset-20190312",
+    #                             output_shape=(32, 1024), sample_rate=16000)
+    # print(y)
+    print(distance( np.random.randn(10,) ,  np.random.randn(10,10)))
