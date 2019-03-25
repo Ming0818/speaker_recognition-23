@@ -45,3 +45,4 @@ model
 *.7z
 logs/
 models/
+*.wav

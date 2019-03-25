@@ -1,10 +1,12 @@
 import keras
 import keras.backend as K
 from keras import Model, Input
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda, BatchNormalization
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda, BatchNormalization, GRU
 from keras.models import Sequential
+from keras.optimizers import Adam
+from keras.utils import plot_model
 
-from loss import l2_softmax
+from loss import l2_softmax, bpr_triplet_loss, identity_loss
 from resnet import resnet_v2
 from transformer import get_transformer
 
@@ -20,6 +22,10 @@ def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
         return full_transformer(shape=shape, num_classes=num_classes)
     elif model_type == 4:
         return res_with_center_loss_model(shape, num_classes, **kwargs)
+    elif model_type == 5:
+        return triplet_loss(shape, num_classes, **kwargs)
+    elif model_type == 6:
+        return rnn(shape, num_classes, **kwargs)
     else:
         print("error")
 
@@ -47,9 +53,9 @@ def res_plus_transformer_model(shape=(32, 1024), num_classes=500):
     return model
 
 
-def simple_model(shape=(32, 1024), num_classes=500):
+def simple_model(shape=(32, 1024), num_classes=500, **kwargs):
     model = Sequential()
-    model.add(keras.layers.Reshape(target_shape=(*shape, 1), input_shape=shape))
+    model.add(keras.layers.Reshape(target_shape=(*shape, 1), input_shape=shape, name="input"))
     model.add(Conv2D(32, kernel_size=(2, 2), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.5))
@@ -63,13 +69,27 @@ def simple_model(shape=(32, 1024), num_classes=500):
     return model
 
 
+def rnn(shape=(32, 1024), num_classes=500, l2_sm=15, **kwargs):
+    input_array = keras.Input(shape, name='input')
+    rnn = GRU(50, return_sequences=False)(input_array)
+    full = rnn
+    den = Dense(50, activation="relu", name="feature_layer")(full)
+    output = Dense(num_classes, activation='softmax', name="output_layer")(den)
+    model = Model(inputs=input_array, outputs=output)
+    model.compile(loss=l2_softmax(l2_sm),
+                  optimizer=keras.optimizers.Adadelta(),
+                  metrics=['accuracy'])
+    model.summary()
+    return model
+
+
 def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
     input_array = keras.Input(shape, name='input')
 
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
     resnet_output = BatchNormalization()(resnet_output)
-    mid = keras.layers.Dense(feature_length, activation='relu', name="feature_layer")(resnet_output)
+    mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
     # mid = Dropout(0.3)(mid)
     mid = BatchNormalization()(mid)
     output = keras.layers.Dense(num_classes, activation='softmax', name="output_layer")(mid)
@@ -79,6 +99,36 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=10
                   optimizer=keras.optimizers.Adadelta(),
                   metrics=['accuracy'])
     model.summary()
+    return model
+
+
+def triplet_loss(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
+    origin_model = full_res_net_model(shape, num_classes, n, feature_length, l2_sm)
+    origin_input = origin_model.input
+    origin_feature_output = origin_model.get_layer('feature_layer').output
+    origin_output = origin_model.get_layer('output_layer').output
+
+    model = Model(inputs=origin_input, outputs=origin_feature_output)
+
+    user_input = Input(shape, name='user_input')
+    positive_item_input = Input(shape, name='positive_item_input')
+    negative_item_input = Input(shape, name='negative_item_input')
+
+    user_output = model(user_input)
+    positive_item_output = model(positive_item_input)
+    negative_item_output = model(negative_item_input)
+
+    loss = Lambda(
+        lambda x: bpr_triplet_loss(x),
+        name='loss',
+        output_shape=(1,))([positive_item_output, negative_item_output, user_output])
+
+    model = Model(
+        input=[positive_item_input, negative_item_input, user_input],
+        output=loss)
+    model.compile(loss=identity_loss, optimizer=Adam())
+    model.summary()
+    plot_model(model, to_file='model.png')
     return model
 
 
@@ -124,6 +174,7 @@ def load_model(model_path, model_type=0) -> keras.Model:
     返回训练好的模型
     :return:
     """
+
     def temp(a, b):
         return b
 

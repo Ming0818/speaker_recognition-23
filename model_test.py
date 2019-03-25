@@ -8,6 +8,7 @@ from feature_transform import get_vector, distance, mean_vectors
 from model import load_model
 import pandas as pd
 import matplotlib.pyplot as plt
+from statistics import median
 
 
 def model_simple_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
@@ -43,6 +44,59 @@ def model_simple_test(model_path, file_path, output_shape, sample_rate, process_
     auc = metrics.auc(fpr, tpr)
     print("auc:", auc)
     return auc
+
+def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
+    num_of_voice_to_be_anchor = 3
+    model = load_model(model_path, model_type)
+    dataset = DataSet(file_dir=file_path, output_shape=output_shape, sample_rate=sample_rate)
+    x, y = dataset.get_train_data(process_class=process_class)
+
+    class_num = len(set(y))
+    chosen_class = np.random.choice(range(class_num), int(class_num/2))
+
+    anchor_voice = dict(zip(chosen_class, [[] for _ in range(len(chosen_class))]))
+    for cls in chosen_class:
+        num = 0
+        for i in range(len(y)):
+            if y[i] == cls:
+                anchor_voice[cls].append(x[i])
+                num += 1
+                if num == num_of_voice_to_be_anchor:
+                    break
+
+    anchor_voice = [mean_vectors(model.predict(np.array(anchor_voice[cls]))) for cls in anchor_voice.keys()]
+
+    # reset class
+    for i in range(len(y)):
+        if y[i] in chosen_class:
+            y[i] = 1
+        else:
+            y[i] = 0
+
+    x = model.predict(np.array(x))
+
+    # calculate distance
+    dis = []
+    for i in range(x.shape[0]):
+        dis.append(min(distance(x[i], np.array(anchor_voice))))
+
+    acc_score(y, dis)
+    fpr, tpr, thresholds = metrics.roc_curve(y, dis, pos_label=1)
+    # print(fpr, tpr, thresholds)
+    # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
+    auc = metrics.auc(fpr, tpr)
+    print("auc:", auc)
+
+    # # calculate label
+    # label = []
+    # median_of_dis = median(dis)
+    # for i in range(len(dis)):
+    #     if dis[i] <= median_of_dis:
+    #         label.append(1)
+    #     else:
+    #         label.append(0)
+
+
 
 
 def acc_score(y, y_prediction):
@@ -89,5 +143,5 @@ if __name__ == '__main__':
     model_type = args.model_type
     net_depth = args.net_depth
 
-    model_simple_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
+    leave_device_auc_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
                       process_class=process_class, model_type=model_type)

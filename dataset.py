@@ -7,15 +7,19 @@ import numpy as np
 
 
 class DataSet:
-    def __init__(self, file_dir, output_shape, sample_rate):
+    def __init__(self, file_dir, output_shape, sample_rate, batch_size=16, process_class=1):
         self.root_file_dir = file_dir
         self.label_dict = {}
         self.output_shape = output_shape
         self.sample_rate = sample_rate
+        self.file_label = None
+        self.batch_size = batch_size
+        self.process_class = process_class
 
     def _set_label(self):
         file_list = os.listdir(self.root_file_dir)
         self.label_dict = dict(zip(file_list, range(len(file_list))))
+        print(self.label_dict)
 
     def _read_data(self, file_path):
         data, sr = librosa.load(os.path.join(self.root_file_dir, file_path), sr=self.sample_rate)
@@ -52,8 +56,9 @@ class DataSet:
 
     def _add_white_noise_and_segment(self, wave, sr):
         if np.random.rand() < 0.5:
-            return self._segment_process(np.add(wave, np.array(((acoustics.generator.noise(sr * 90, color='white')) / 3) * 5000).astype(np.int16)[
-                         :len(wave)]), sr)
+            return self._segment_process(np.add(wave, np.array(
+                ((acoustics.generator.noise(sr * 90, color='white')) / 3) * 5000).astype(np.int16)[
+                                                      :len(wave)]), sr)
         else:
             return self._segment_process(wave, sr)
 
@@ -75,6 +80,7 @@ class DataSet:
 
     def _process_data(self, data, process_class=0):
         data, sr = data
+        # print(1)
         if process_class == 0:
             return self._mfcc_process(data, sr=sr)
         elif process_class == 1:
@@ -96,7 +102,30 @@ class DataSet:
                 label_list.append(self.label_dict[file_dir])
         return file_list, label_list
 
-    # def get_
+    def _set_file_label(self, process_class=1):
+        file_list, label_list = self.get_train_data(process_class=process_class)
+        file_label = [[] for _ in range(len(set(label_list)))]
+        for file, label in zip(file_list, label_list):
+            file_label[label].append(file)
+
+        for i in range(len(file_label)):
+            file_label[i] = file_label[i][:496]
+        self.file_label = np.array(file_label)
+
+    def get_triplet_batch(self, batch_size=16):
+        if self.file_label is None:
+            self._set_file_label(self.process_class)
+        while True:
+            user_input_label = np.random.randint(self.file_label.shape[0], size=batch_size)
+            user_input_index = np.random.randint(self.file_label.shape[1], size=batch_size)
+
+            user_input = self.file_label[user_input_label, user_input_index]
+            positive_input = self.file_label[
+                user_input_label, np.random.randint(self.file_label.shape[1], size=batch_size)]
+            negative_input = self.file_label[
+                np.random.randint(self.file_label.shape[0], size=batch_size), np.random.randint(
+                    self.file_label.shape[1], size=batch_size)]
+            yield [user_input, positive_input, negative_input], np.ones((batch_size, ))
 
     def get_register_data(self, path, process_class=1) -> List:
         """
@@ -111,7 +140,6 @@ class DataSet:
         data = librosa.load(path, sr=self.sample_rate)
         data = self._process_data(data, process_class=process_class)
         return data
-
 
 
 if __name__ == '__main__':

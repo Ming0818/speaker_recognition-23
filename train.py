@@ -61,6 +61,7 @@ print(args.continue_training)
 
 x, y = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate).get_train_data(
     process_class=process_class)
+print("read")
 origin_y = np.array(y)
 y = keras.utils.to_categorical(y, num_classes=class_num)
 x, x_test, y, y_test, origin_y, origin_y_test = train_test_split(x, y, origin_y, test_size=0.25)
@@ -69,7 +70,7 @@ model = get_model(shape=output_shape, num_classes=class_num, model_type=model_ty
 
 tensorboard = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=16, write_graph=False, write_grads=False,
                           write_images=False, embeddings_freq=4, embeddings_layer_names='embedding_layer',
-                          embeddings_data=[np.array(x[:class_num]),np.array(range(class_num))], update_freq='epoch')
+                          embeddings_data=[np.array(x[:class_num]), np.array(range(class_num))], update_freq='epoch')
 # create dir
 checkpoint = ModelCheckpoint(filepath='./models/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
                              monitor='val_acc',
@@ -113,8 +114,27 @@ elif args.continue_training:
               validation_data=([x_test, np.array(origin_y_test)], [y_test, random_y_test]), shuffle=True,
               callbacks=callbacks)
     model.trainable = True
-    model.fit(x=[x, np.array(origin_y)], y=[y, random_y_train], batch_size=batch_size, epochs=epochs-1,
+    model.fit(x=[x, np.array(origin_y)], y=[y, random_y_train], batch_size=batch_size, epochs=epochs - 1,
               validation_data=([x_test, np.array(origin_y_test)], [y_test, random_y_test]), shuffle=True,
+              callbacks=callbacks)
+
+elif model_type == 5:
+    ds = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate, batch_size=5000)
+    for i in ds.get_triplet_batch(5000):
+        k = i[0]
+        break
+    p = k
+
+    for i in ds.get_triplet_batch(500):
+        k = i[0]
+        break
+    v = k
+    # p = np.array(k).transpose((1, 0, 2, 3))
+    # print(p.shape)
+    model.fit([p[0], p[1], p[2]], np.ones(5000),batch_size=batch_size,
+              epochs=epochs,
+              validation_data=([v[0], v[1], v[2]], np.ones(500)),
+              shuffle=True,
               callbacks=callbacks)
 
 else:
@@ -126,5 +146,5 @@ else:
               callbacks=callbacks
               )
 
-if model_path is not None:
-    model.save(model_path)
+# if model_path is not None:
+#     model.save(model_path)
