@@ -30,6 +30,7 @@ class DataSet:
         shape = data.shape
         data_flatten = data.ravel()
         data_flatten = data_flatten / np.linalg.norm(data_flatten)
+        data_flatten = data_flatten - np.mean(data_flatten)
         return data_flatten.reshape(shape)
 
     def _mfcc_process(self, wave, sr):
@@ -101,6 +102,25 @@ class DataSet:
                 file_list.append(data)
                 label_list.append(self.label_dict[file_dir])
         return file_list, label_list
+
+    def get_train_file_name(self):
+        self._set_label()
+        file_list = []
+        label_list = []
+        for file_dir in self.label_dict.keys():
+            for file in os.listdir(os.path.join(self.root_file_dir, file_dir)):
+                file_path = os.path.join(file_dir, file)
+                file_list.append(file_path)
+                label_list.append(self.label_dict[file_dir])
+        return file_list, label_list
+
+    def read_batch(self, batch):
+        final_batch = []
+        for file_path in batch:
+            data, sr = self._read_data(file_path)
+            data = data[np.random.randint(8000):]
+            final_batch.append(self._process_data((data, sr), process_class=self.process_class))
+        return final_batch
 
     def _set_file_label(self, process_class=1):
         file_list, label_list = self.get_train_data(process_class=process_class)

@@ -6,9 +6,6 @@ from sklearn import metrics
 from dataset import DataSet
 from feature_transform import get_vector, distance, mean_vectors
 from model import load_model
-import pandas as pd
-import matplotlib.pyplot as plt
-from statistics import median
 
 
 def model_simple_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
@@ -45,6 +42,7 @@ def model_simple_test(model_path, file_path, output_shape, sample_rate, process_
     print("auc:", auc)
     return auc
 
+
 def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
     num_of_voice_to_be_anchor = 3
     model = load_model(model_path, model_type)
@@ -52,7 +50,7 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
     x, y = dataset.get_train_data(process_class=process_class)
 
     class_num = len(set(y))
-    chosen_class = np.random.choice(range(class_num), int(class_num/2))
+    chosen_class = np.random.choice(range(class_num), int(class_num / 2))
 
     anchor_voice = dict(zip(chosen_class, [[] for _ in range(len(chosen_class))]))
     for cls in chosen_class:
@@ -95,8 +93,6 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
     #         label.append(1)
     #     else:
     #         label.append(0)
-
-
 
 
 def acc_score(y, y_prediction):
@@ -144,4 +140,4 @@ if __name__ == '__main__':
     net_depth = args.net_depth
 
     leave_device_auc_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
-                      process_class=process_class, model_type=model_type)
+                          process_class=process_class, model_type=model_type)

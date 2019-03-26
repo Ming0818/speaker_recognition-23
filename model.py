@@ -103,7 +103,7 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=10
 
 
 def triplet_loss(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
-    origin_model = full_res_net_model(shape, num_classes, n, feature_length, l2_sm)
+    origin_model = load_model("weights.05-4.37.hdf5")
     origin_input = origin_model.input
     origin_feature_output = origin_model.get_layer('feature_layer').output
     origin_output = origin_model.get_layer('output_layer').output
@@ -169,7 +169,7 @@ def full_transformer(shape=(32, 1024), num_classes=500, feature_length=100):
     return model
 
 
-def load_model(model_path, model_type=0) -> keras.Model:
+def load_model(model_path, load_type=0) -> keras.Model:
     """
     返回训练好的模型
     :return:
@@ -178,15 +178,20 @@ def load_model(model_path, model_type=0) -> keras.Model:
     def temp(a, b):
         return b
 
-    if model_type == 0:
+    if load_type == 0:
         return keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10), '<lambda>': temp})
-    elif model_type == 2:
+    elif load_type == 2:
         model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10), '<lambda>': temp})
         output = model.get_layer('feature_layer').output
         new_model = Model(inputs=model.get_layer('input').input, outputs=output)
         return new_model
-    elif model_type == 1:
+    elif load_type == 1:
         model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10)})
         output = model.get_layer('feature_layer').output
         new_model = Model(inputs=model.input, outputs=output)
         return new_model
+    elif load_type == 3:
+        model = keras.models.load_model(model_path, custom_objects={'bpr_triplet_loss': bpr_triplet_loss,
+                                                                    'identity_loss': identity_loss})
+        print(len(model.layers))
+        return Model(inputs=model.get_layer('model_1').get_input_at(0), output=model.get_layer('model_1').get_output_at(0))
