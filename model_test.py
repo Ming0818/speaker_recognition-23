@@ -1,6 +1,7 @@
 import argparse
 
 import numpy as np
+import pandas as pd
 from sklearn import metrics
 
 from dataset import DataSet
@@ -48,6 +49,7 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
     model = load_model(model_path, model_type)
     dataset = DataSet(file_dir=file_path, output_shape=output_shape, sample_rate=sample_rate)
     x, y = dataset.get_train_data(process_class=process_class)
+    predict_class = []
 
     class_num = len(set(y))
     chosen_class = np.random.choice(range(class_num), int(class_num / 2))
@@ -73,6 +75,7 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
 
     x = model.predict(np.array(x))
 
+
     # calculate distance
     dis = []
     for i in range(x.shape[0]):
@@ -85,14 +88,44 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
     auc = metrics.auc(fpr, tpr)
     print("auc:", auc)
 
-    # # calculate label
-    # label = []
-    # median_of_dis = median(dis)
-    # for i in range(len(dis)):
-    #     if dis[i] <= median_of_dis:
-    #         label.append(1)
-    #     else:
-    #         label.append(0)
+    # # calculate distance and class
+    # dis = []
+    # for i in range(x.shape[0]):
+    #     full_distance = distance(x[i], np.array(anchor_voice))
+    #     min_dis = min(full_distance)
+    #     cls = full_distance.index(min_dis)
+    #     dis.append(min_dis)
+    #     predict_class.append(cls)
+    #
+    # # create dataframe
+    # index = list(range(len(x)))
+    # df = pd.DataFrame(data={"ind": index, "dis": dis, "cls": predict_class})
+    # pre = get_real_prediction(df)
+    # pre_list = list(zip(pre.keys(), pre.values()))
+    # pre_list = sorted(pre_list, key=lambda x:[0])
+    # pre = [x[1] for x in pre_list]
+    #
+    # print(metrics.accuracy_score(y, pre))
+    # acc_score(y, dis)
+    # fpr, tpr, thresholds = metrics.roc_curve(y, pre, pos_label=1)
+    # # print(fpr, tpr, thresholds)
+    # # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
+    # auc = metrics.auc(fpr, tpr)
+    # print("auc:", auc)
+
+
+
+def get_real_prediction(cls_pd):
+    final = {}
+    for cls, df in cls_pd.groupby("cls"):
+        print(cls, df.shape)
+        median = np.median(df["dis"].values)
+        for index, row in df.iterrows():
+            if row.dis <= median:
+                final[row.ind] = 1
+            else:
+                final[row.ind] = 0
+    return final
 
 
 def acc_score(y, y_prediction):

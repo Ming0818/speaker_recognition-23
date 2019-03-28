@@ -17,9 +17,27 @@ def euclidean_distance(vects):
     return K.sqrt(K.maximum(sum_square, K.epsilon()))
 
 
+def l2_normalize(x, axis):
+    norm = K.sqrt(K.sum(K.square(x), axis=axis, keepdims=True))
+    return K.sign(x) * K.maximum(K.abs(x), K.epsilon()) / K.maximum(norm, K.epsilon())
+
+
+def cos_distance(x):
+    y_true, y_pred = x
+    y_true = l2_normalize(y_true, axis=-1)
+    y_pred = l2_normalize(y_pred, axis=-1)
+    return K.mean(1 - K.sum((y_true * y_pred), axis=-1))
+
+
 def eucl_dist_output_shape(shapes):
     shape1, shape2 = shapes
     return (shape1[0], 1)
+
+
+def accuracy(y_true, y_pred):
+    """Compute classification accuracy with a fixed threshold on distances.
+    """
+    return K.mean(K.equal(y_true, K.cast(y_pred < 0.5, y_true.dtype)))
 
 
 def contrastive_loss(y_true, y_pred):
@@ -31,13 +49,12 @@ def contrastive_loss(y_true, y_pred):
     margin_square = K.square(K.maximum(margin - y_pred, 0))
     return K.mean(y_true * square_pred + (1 - y_true) * margin_square)
 
-def identity_loss(y_true, y_pred):
 
+def identity_loss(y_true, y_pred):
     return K.mean(y_pred - 0 * y_true)
 
 
 def bpr_triplet_loss(X):
-
     positive_item_latent, negative_item_latent, user_latent = X
 
     # BPR loss

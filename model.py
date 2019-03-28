@@ -3,10 +3,11 @@ import keras.backend as K
 from keras import Model, Input
 from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda, BatchNormalization, GRU
 from keras.models import Sequential
-from keras.optimizers import Adam
+from keras.optimizers import Adam, RMSprop
 from keras.utils import plot_model
 
-from loss import l2_softmax, bpr_triplet_loss, identity_loss
+from loss import l2_softmax, bpr_triplet_loss, identity_loss, euclidean_distance, eucl_dist_output_shape, \
+    contrastive_loss, accuracy, cos_distance, l2_normalize
 from resnet import resnet_v2
 from transformer import get_transformer
 
@@ -26,6 +27,8 @@ def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
         return triplet_loss(shape, num_classes, **kwargs)
     elif model_type == 6:
         return rnn(shape, num_classes, **kwargs)
+    elif model_type == 7:
+        return siamese_model(shape, num_classes, **kwargs)
     else:
         print("error")
 
@@ -89,8 +92,9 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=10
     three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
     resnet_output = BatchNormalization()(resnet_output)
+    resnet_output = Dropout(0.3)(resnet_output)
     mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
-    # mid = Dropout(0.3)(mid)
+    mid = Dropout(0.3)(mid)
     mid = BatchNormalization()(mid)
     output = keras.layers.Dense(num_classes, activation='softmax', name="output_layer")(mid)
 
@@ -103,10 +107,9 @@ def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=10
 
 
 def triplet_loss(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
-    origin_model = load_model("weights.05-4.37.hdf5")
+    origin_model = load_model(kwargs["model_path"])
     origin_input = origin_model.input
     origin_feature_output = origin_model.get_layer('feature_layer').output
-    origin_output = origin_model.get_layer('output_layer').output
 
     model = Model(inputs=origin_input, outputs=origin_feature_output)
 
@@ -128,7 +131,32 @@ def triplet_loss(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_
         output=loss)
     model.compile(loss=identity_loss, optimizer=Adam())
     model.summary()
-    plot_model(model, to_file='model.png')
+    # plot_model(model, to_file='model.png')
+    return model
+
+
+def siamese_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
+    origin_model = load_model(kwargs["model_path"])
+    origin_input = origin_model.input
+    origin_feature_output = origin_model.get_layer('feature_layer').output
+
+    model = Model(inputs=origin_input, outputs=origin_feature_output)
+
+    first_input = Input(shape, name='first_input')
+    second_input = Input(shape, name='second_input')
+
+    first_output = model(first_input)
+    second_output = model(second_input)
+
+    distance = Lambda(cos_distance,
+                      output_shape=eucl_dist_output_shape)([first_output, second_output])
+
+    model = Model([first_input, second_input], distance)
+
+    # train
+    rms = RMSprop()
+    model.compile(loss=contrastive_loss, optimizer=rms, metrics=[accuracy])
+    model.summary()
     return model
 
 
@@ -195,3 +223,13 @@ def load_model(model_path, load_type=0) -> keras.Model:
                                                                     'identity_loss': identity_loss})
         print(len(model.layers))
         return Model(inputs=model.get_layer('model_1').get_input_at(0), output=model.get_layer('model_1').get_output_at(0))
+    elif load_type == 4:
+        model = keras.models.load_model(model_path, custom_objects={'cos_distance': cos_distance,
+                                                                    'eucl_dist_output_shape': eucl_dist_output_shape,
+                                                                    'contrastive_loss':contrastive_loss,
+                                                                    'accuracy':accuracy,
+                                                                    'l2_normalize':l2_normalize,
+                                                                    'euclidean_distance':euclidean_distance})
+        print(len(model.layers))
+        return Model(inputs=model.get_layer('model_1').get_input_at(0),
+                     output=model.get_layer('model_1').get_output_at(0))

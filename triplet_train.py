@@ -3,7 +3,7 @@ import argparse
 from keras.callbacks import ModelCheckpoint
 from sklearn.model_selection import train_test_split
 
-from data_generator import VoiceSequence
+from data_generator import SiameseSequence, TripletSequence
 from dataset import DataSet
 from model import get_model
 
@@ -43,22 +43,23 @@ feature_length = args.feature_length
 lambda_c = args.lambda_c
 l2_lambda = args.l2_lambda
 
-ds = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate, process_class=1)
-x, y = ds.get_train_file_name()
-x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
-vs = VoiceSequence(x_set=x, y_set=y, batch_size=batch_size, num_class=class_num, data_process_func=ds.read_batch)
-vs_validation = VoiceSequence(x_test, y_test, batch_size=batch_size, num_class=class_num,
-                              data_process_func=ds.read_batch)
-model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth,
-                  feature_length=args.feature_length, l2_sm=l2_lambda, lambda_c=lambda_c)
-
-# create dir
-checkpoint = ModelCheckpoint(filepath='./models/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
+checkpoint = ModelCheckpoint(filepath='./models/weights.{epoch:02d}-{loss:.2f}.hdf5',
                              monitor='val_acc',
                              verbose=1,
                              save_best_only=False)
 
+model = get_model(shape=output_shape, num_classes=class_num, model_type=model_type, n=net_depth,
+                  feature_length=args.feature_length, l2_sm=l2_lambda, lambda_c=lambda_c, model_path=model_path)
+
+ds = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate, batch_size=8)
+x, y = ds.get_train_file_name()
+x, x_test, y, y_test = train_test_split(x, y, test_size=0.25)
+ss = TripletSequence(x_set=x, y_set=y, batch_size=batch_size, num_class=class_num, data_process_func=ds.read_batch)
+ss_valid = TripletSequence(x_test, y_test, batch_size=batch_size, num_class=class_num,
+                           data_process_func=ds.read_batch)
+
+
 callbacks = [checkpoint]
 
-model.fit_generator(generator=vs, steps_per_epoch=2000, epochs=epochs, callbacks=callbacks,
-                    validation_data=vs_validation, validation_steps=30, use_multiprocessing=False)
+model.fit_generator(generator=ss, steps_per_epoch=1000, epochs=epochs, callbacks=callbacks,
+                    validation_data=ss_valid, validation_steps=30, use_multiprocessing=False)
