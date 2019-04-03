@@ -105,4 +105,4 @@ model.summary()
 
 ds = DataSet(file_dir=file_dir, output_shape=output_shape, sample_rate=sample_rate, batch_size=5000)
 
-model.fit_generator(ds.get_triplet_batch(8), epochs=10, steps_per_epoch=1000, callbacks=[checkpoint])
+model.fit_generator(ds.get_triplet_batch(8), epochs=20, steps_per_epoch=1000, callbacks=[checkpoint])

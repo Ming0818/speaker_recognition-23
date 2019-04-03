@@ -52,7 +52,7 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
     predict_class = []
 
     class_num = len(set(y))
-    chosen_class = np.random.choice(range(class_num), int(class_num / 2))
+    chosen_class = np.random.choice(range(class_num), int(class_num / 2), replace=False)
 
     anchor_voice = dict(zip(chosen_class, [[] for _ in range(len(chosen_class))]))
     for cls in chosen_class:
@@ -88,31 +88,106 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
     auc = metrics.auc(fpr, tpr)
     print("auc:", auc)
 
-    # # calculate distance and class
-    # dis = []
-    # for i in range(x.shape[0]):
-    #     full_distance = distance(x[i], np.array(anchor_voice))
-    #     min_dis = min(full_distance)
-    #     cls = full_distance.index(min_dis)
-    #     dis.append(min_dis)
-    #     predict_class.append(cls)
-    #
-    # # create dataframe
-    # index = list(range(len(x)))
-    # df = pd.DataFrame(data={"ind": index, "dis": dis, "cls": predict_class})
-    # pre = get_real_prediction(df)
-    # pre_list = list(zip(pre.keys(), pre.values()))
-    # pre_list = sorted(pre_list, key=lambda x:[0])
-    # pre = [x[1] for x in pre_list]
-    #
-    # print(metrics.accuracy_score(y, pre))
-    # acc_score(y, dis)
-    # fpr, tpr, thresholds = metrics.roc_curve(y, pre, pos_label=1)
-    # # print(fpr, tpr, thresholds)
-    # # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
-    # auc = metrics.auc(fpr, tpr)
-    # print("auc:", auc)
+    # calculate distance and class
+    dis = []
+    for i in range(x.shape[0]):
+        full_distance = distance(x[i], np.array(anchor_voice))
+        min_dis = min(full_distance)
+        cls = full_distance.index(min_dis)
+        dis.append(min_dis)
+        predict_class.append(cls)
 
+    # create dataframe
+    index = list(range(len(x)))
+    df = pd.DataFrame(data={"ind": index, "dis": dis, "cls": predict_class})
+    pre = get_real_prediction(df)
+    pre_list = list(zip(pre.keys(), pre.values()))
+    pre_list = sorted(pre_list, key=lambda x:[0])
+    pre = [x[1] for x in pre_list]
+
+    print(metrics.accuracy_score(y, pre))
+    acc_score(y, dis)
+    fpr, tpr, thresholds = metrics.roc_curve(y, pre, pos_label=1)
+    # print(fpr, tpr, thresholds)
+    # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
+    auc = metrics.auc(fpr, tpr)
+    print("auc:", auc)
+
+
+def threshold_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
+    num_of_voice_to_be_anchor = 3
+    model = load_model(model_path, model_type)
+    dataset = DataSet(file_dir=file_path, output_shape=output_shape, sample_rate=sample_rate)
+    x, y = dataset.get_train_data(process_class=process_class)
+    predict_class = []
+
+    class_num = len(set(y))
+    chosen_class = np.random.choice(range(class_num), int(class_num / 2), replace=False)
+    print(chosen_class)
+
+    anchor_voice = dict(zip(chosen_class, [[] for _ in range(len(chosen_class))]))
+    for cls in chosen_class:
+        num = 0
+        for i in range(len(y)):
+            if y[i] == cls:
+                anchor_voice[cls].append(x[i])
+                num += 1
+                if num == num_of_voice_to_be_anchor:
+                    break
+
+    anchor_voice = [model.predict(np.array(anchor_voice[cls])) for cls in anchor_voice.keys()]
+
+    # calculate threshold
+    thresholds = []
+    for anchors in anchor_voice:
+        thresholds.append(max(distance(anchors[0], np.array(anchors)) + distance(anchors[1], np.array(anchors))))
+    print(thresholds)
+
+    # reset class
+    for i in range(len(y)):
+        if y[i] in chosen_class:
+            y[i] = 1
+        else:
+            y[i] = 0
+
+    x = model.predict(np.array(x))
+
+    # calculate distance
+    dis = []
+    for i in range(x.shape[0]):
+        dis.append(min(distance(x[i], np.array(anchor_voice))))
+
+    acc_score(y, dis)
+    fpr, tpr, thresholds = metrics.roc_curve(y, dis, pos_label=1)
+    # print(fpr, tpr, thresholds)
+    # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
+    auc = metrics.auc(fpr, tpr)
+    print("auc:", auc)
+
+    # calculate distance and class
+    dis = []
+    for i in range(x.shape[0]):
+        full_distance = distance(x[i], np.array(anchor_voice))
+        min_dis = min(full_distance)
+        cls = full_distance.index(min_dis)
+        dis.append(min_dis)
+        predict_class.append(cls)
+
+    # create dataframe
+    index = list(range(len(x)))
+    df = pd.DataFrame(data={"ind": index, "dis": dis, "cls": predict_class})
+    pre = get_real_prediction(df)
+    pre_list = list(zip(pre.keys(), pre.values()))
+    pre_list = sorted(pre_list, key=lambda x:[0])
+    pre = [x[1] for x in pre_list]
+
+    print(metrics.accuracy_score(y, pre))
+    acc_score(y, dis)
+    fpr, tpr, thresholds = metrics.roc_curve(y, pre, pos_label=1)
+    # print(fpr, tpr, thresholds)
+    # pd.DataFrame(data=np.array([fpr, tpr, thresholds]).T, columns=["fpr", "tpr", "thr"])
+    auc = metrics.auc(fpr, tpr)
+    print("auc:", auc)
 
 
 def get_real_prediction(cls_pd):
@@ -133,9 +208,9 @@ def acc_score(y, y_prediction):
     true_pos = 0
     true_neg = 0
     for i in range(len(s_l)):
-        if i < len(s_l) / 2 and s_l[i][0] == 1:
+        if i < len(s_l) /2and s_l[i][0] == 1:
             true_pos += 1
-        elif i >= len(s_l) / 2 and s_l[i][0] == 0:
+        elif i >= len(s_l) /2 and s_l[i][0] == 0:
             true_neg += 1
 
     print("acc:", (true_neg + true_pos) / len(s_l))
@@ -172,5 +247,5 @@ if __name__ == '__main__':
     model_type = args.model_type
     net_depth = args.net_depth
 
-    leave_device_auc_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
+    model_simple_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
                           process_class=process_class, model_type=model_type)

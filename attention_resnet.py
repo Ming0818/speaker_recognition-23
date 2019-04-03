@@ -1,48 +1,15 @@
 from __future__ import print_function
 
 import keras
-from keras.layers import AveragePooling2D, Input, Flatten, MaxPooling2D
-from keras.layers import Dense, Conv2D, BatchNormalization, Activation
-from keras.models import Model
+from keras.layers import BatchNormalization, Activation, Permute, Reshape, Dense, Multiply
+from keras.layers import Flatten, Conv1D, MaxPooling1D
 from keras.regularizers import l2
 
-# Training parameters
-# batch_size = 32  # orig paper trained all networks with batch_size=128
-# epochs = 200
 data_augmentation = True
 num_classes = 10
 
 # Subtracting pixel mean improves accuracy
 subtract_pixel_mean = True
-
-
-# # Model name, depth and version
-# model_type = 'ResNet%dv%d' % (depth, version)
-#
-# # Load the CIFAR10 data.
-# (x_train, y_train), (x_test, y_test) = cifar10.load_data()
-#
-# # Input image dimensions.
-# input_shape = x_train.shape[1:]
-#
-# # Normalize data.
-# x_train = x_train.astype('float32') / 255
-# x_test = x_test.astype('float32') / 255
-#
-# # If subtract pixel mean is enabled
-# if subtract_pixel_mean:
-#     x_train_mean = np.mean(x_train, axis=0)
-#     x_train -= x_train_mean
-#     x_test -= x_train_mean
-#
-# print('x_train shape:', x_train.shape)
-# print(x_train.shape[0], 'train samples')
-# print(x_test.shape[0], 'test samples')
-# print('y_train shape:', y_train.shape)
-#
-# # Convert class vectors to binary class matrices.
-# y_train = keras.utils.to_categorical(y_train, num_classes)
-# y_test = keras.utils.to_categorical(y_test, num_classes)
 
 
 def lr_schedule(epoch):
@@ -70,13 +37,13 @@ def lr_schedule(epoch):
     return lr
 
 
-def resnet_layer(inputs,
-                 num_filters=16,
-                 kernel_size=3,
-                 strides=1,
-                 activation='relu',
-                 batch_normalization=True,
-                 conv_first=True):
+def resnet_layer_1d(inputs,
+                    num_filters=16,
+                    kernel_size=9,
+                    strides=1,
+                    activation='relu',
+                    batch_normalization=True,
+                    conv_first=True):
     """2D Convolution-Batch Normalization-Activation stack builder
 
     # Arguments
@@ -92,7 +59,7 @@ def resnet_layer(inputs,
     # Returns
         x (tensor): tensor as input to the next layer
     """
-    conv = Conv2D(num_filters,
+    conv = Conv1D(num_filters,
                   kernel_size=kernel_size,
                   strides=strides,
                   padding='same',
@@ -115,7 +82,19 @@ def resnet_layer(inputs,
     return x
 
 
-def resnet_v2(inputs, n, num_classes=10):
+def attention_3d_block(inputs, name):
+    # inputs.shape = (batch_size, time_steps, input_dim)
+    input_dim = int(inputs.get_shape()[2])
+    time_steps = int(inputs.get_shape()[1])
+    a = Permute((2, 1))(inputs)
+    a = Reshape((input_dim, time_steps))(a) # this line is not useful. It's just to know which dimension is what.
+    a = Dense(time_steps, activation='softmax')(a)
+    a_probs = Permute((2, 1), name='attention_vec'+name)(a)
+    output_attention_mul = Multiply(name='attention_mul'+name)([inputs, a_probs])
+    return output_attention_mul
+
+
+def resnet_1d(inputs, n):
     """ResNet Version 2 Model builder [b]
 
     Stacks of (1 x 1)-(3 x 3)-(1 x 1) BN-ReLU-Conv2D or also known as
@@ -149,9 +128,9 @@ def resnet_v2(inputs, n, num_classes=10):
 
     # inputs = Input(shape=input_shape)
     # v2 performs Conv2D with BN-ReLU on input before splitting into 2 paths
-    x = resnet_layer(inputs=inputs,
-                     num_filters=num_filters_in,
-                     conv_first=True)
+    x = resnet_layer_1d(inputs=inputs,
+                        num_filters=num_filters_in,
+                        conv_first=True)
 
     # Instantiate the stack of residual units
     for stage in range(3):
@@ -170,30 +149,31 @@ def resnet_v2(inputs, n, num_classes=10):
                     strides = 2  # downsample
 
             # bottleneck residual unit
-            y = resnet_layer(inputs=x,
-                             num_filters=num_filters_in,
-                             kernel_size=1,
-                             strides=strides,
-                             activation=activation,
-                             batch_normalization=batch_normalization,
-                             conv_first=False)
-            y = resnet_layer(inputs=y,
-                             num_filters=num_filters_in,
-                             conv_first=False)
-            y = resnet_layer(inputs=y,
-                             num_filters=num_filters_out,
-                             kernel_size=1,
-                             conv_first=False)
+            y = resnet_layer_1d(inputs=x,
+                                num_filters=num_filters_in,
+                                kernel_size=1,
+                                strides=strides,
+                                activation=activation,
+                                batch_normalization=batch_normalization,
+                                conv_first=False)
+            y = resnet_layer_1d(inputs=y,
+                                num_filters=num_filters_in,
+                                conv_first=False)
+            y = resnet_layer_1d(inputs=y,
+                                num_filters=num_filters_out,
+                                kernel_size=1,
+                                conv_first=False)
             if res_block == 0:
                 # linear projection residual shortcut connection to match
                 # changed dims
-                x = resnet_layer(inputs=x,
-                                 num_filters=num_filters_out,
-                                 kernel_size=1,
-                                 strides=strides,
-                                 activation=None,
-                                 batch_normalization=False)
-            x = keras.layers.add([x, y])
+                x = resnet_layer_1d(inputs=x,
+                                    num_filters=num_filters_out,
+                                    kernel_size=1,
+                                    strides=strides,
+                                    activation=None,
+                                    batch_normalization=False)
+            f = attention_3d_block(y, name="_"+str(stage)+"_"+str(res_block))
+            x = keras.layers.add([x, y, f])
 
         num_filters_in = num_filters_out
 
@@ -201,7 +181,7 @@ def resnet_v2(inputs, n, num_classes=10):
     # v2 has BN-ReLU before Pooling
     x = BatchNormalization()(x)
     x = Activation('elu')(x)
-    x = MaxPooling2D(pool_size=8)(x)
+    x = MaxPooling1D(pool_size=16)(x)
     y = Flatten()(x)
     outputs = y
 

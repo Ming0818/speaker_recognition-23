@@ -54,7 +54,7 @@ def mean_vectors(vectors):
 
 
 def get_mean_feature_for_device(path, model_path, output_shape, sample_rate, process_class=1):
-    model = load_model(model_path, model_type=2)
+    model = load_model(model_path, load_type=2)
     data = pd.read_csv(os.path.join(path, "enrollment.csv"))
     dataset = DataSet(file_dir=path, output_shape=output_shape, sample_rate=sample_rate)
     feature_dict = {}
@@ -74,7 +74,7 @@ def get_mean_feature_for_device(path, model_path, output_shape, sample_rate, pro
 def get_threshold(model_path, path, output_shape, sample_rate):
     files, labels = DataSet(file_dir=path, output_shape=output_shape, sample_rate=sample_rate).get_train_data(
         process_class=1)
-    model = load_model(model_path, model_type=2)
+    model = load_model(model_path, load_type=2)
 
     f = []
     target_label = 8
@@ -93,7 +93,7 @@ def get_threshold(model_path, path, output_shape, sample_rate):
 
 def device_test():
     ds = DataSet(file_dir='D:\\af2019-sr-devset-20190312\\data', output_shape=(1024, 32), sample_rate=16000)
-    model = load_model("models/weights.08-1.20.hdf5", model_type=2)
+    model = load_model("models/weights.08-1.20.hdf5", load_type=2)
     a = ds._process_data(ds._read_data('f049f8a4ae0dfed516a99c735aee0e73.wav'), process_class=1)
     b = ds._process_data(ds._read_data('db5c111964384109fb8af605595abf39.wav'), process_class=1)
 

@@ -1,13 +1,17 @@
 import os
 from typing import List, Tuple
 
-import acoustics
 import librosa
 import numpy as np
+from pysndfx import AudioEffectsChain
+
+
+def get_file_list_in_dir(path):
+    return [name for name in os.listdir(path) if not os.path.isdir(os.path.join(path, name))]
 
 
 class DataSet:
-    def __init__(self, file_dir, output_shape, sample_rate, batch_size=16, process_class=1):
+    def __init__(self, file_dir, output_shape, sample_rate, batch_size=16, process_class=1, noise_path=None):
         self.root_file_dir = file_dir
         self.label_dict = {}
         self.output_shape = output_shape
@@ -15,6 +19,8 @@ class DataSet:
         self.file_label = None
         self.batch_size = batch_size
         self.process_class = process_class
+        if noise_path is not None:
+            self.noise = librosa.load(os.path.join(noise_path), sr=self.sample_rate)
 
     def _set_label(self):
         file_list = os.listdir(self.root_file_dir)
@@ -36,7 +42,10 @@ class DataSet:
     def _mfcc_process(self, wave, sr):
         mfcc = librosa.feature.mfcc(wave, sr=sr, n_mfcc=self.output_shape[0])
         pad_width = self.output_shape[1] - mfcc.shape[1]
-        mfcc = np.pad(mfcc, pad_width=((0, 0), (0, pad_width)), mode='constant')
+        if pad_width >= 0:
+            mfcc = np.pad(mfcc, pad_width=((0, 0), (0, pad_width)), mode='constant')
+        else:
+            mfcc = mfcc[:, :self.output_shape[1]]
         return DataSet._normalize_data(mfcc)
 
     def _segment_process(self, wave, sr):
@@ -56,10 +65,23 @@ class DataSet:
         return DataSet._normalize_data(wave)
 
     def _add_white_noise_and_segment(self, wave, sr):
-        if np.random.rand() < 0.5:
-            return self._segment_process(np.add(wave, np.array(
-                ((acoustics.generator.noise(sr * 90, color='white')) / 3) * 5000).astype(np.int16)[
-                                                      :len(wave)]), sr)
+        echo = (
+            AudioEffectsChain()
+                .delay(gain_in=np.random.random() * 0.2 + 0.7,
+                       gain_out=np.random.random() * 0.2 + 0.5,
+                       delays=list((np.random.random() * 50 + 25, np.random.random() * 100 + 100)),
+                       decays=list((np.random.random() * 0.1 + 0.25, np.random.random() * 0.1 + 0.20)),
+                       parallel=False)
+                .normalize()
+        )
+        if np.random.rand() < 0.3:
+            if np.random.rand() < 0.7:
+                return self._segment_process(echo(wave), sr)
+            else:
+                if np.random.rand() < 0.5:
+                    return self._segment_process(np.add(wave, 0.1 * np.random.normal(0, 1, wave.shape[0])), sr)
+                else:
+                    return self._segment_process(np.multiply(wave, np.random.normal(1, 0.2, wave.shape[0])), sr)
         else:
             return self._segment_process(wave, sr)
 
@@ -108,7 +130,7 @@ class DataSet:
         file_list = []
         label_list = []
         for file_dir in self.label_dict.keys():
-            for file in os.listdir(os.path.join(self.root_file_dir, file_dir)):
+            for file in get_file_list_in_dir(os.path.join(self.root_file_dir, file_dir)):
                 file_path = os.path.join(file_dir, file)
                 file_list.append(file_path)
                 label_list.append(self.label_dict[file_dir])
@@ -145,7 +167,7 @@ class DataSet:
             negative_input = self.file_label[
                 np.random.randint(self.file_label.shape[0], size=batch_size), np.random.randint(
                     self.file_label.shape[1], size=batch_size)]
-            yield [user_input, positive_input, negative_input], np.ones((batch_size, ))
+            yield [user_input, positive_input, negative_input], np.ones((batch_size,))
 
     def get_register_data(self, path, process_class=1) -> List:
         """

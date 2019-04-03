@@ -43,7 +43,7 @@ feature_length = args.feature_length
 lambda_c = args.lambda_c
 l2_lambda = args.l2_lambda
 
-checkpoint = ModelCheckpoint(filepath='./models/weights.{epoch:02d}-{loss:.2f}.hdf5',
+checkpoint = ModelCheckpoint(filepath='./models/weights.{epoch:02d}-{val_loss:.2f}.hdf5',
                              monitor='val_acc',
                              verbose=1,
                              save_best_only=False)

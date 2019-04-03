@@ -2,7 +2,7 @@ from keras_transformer.position import TransformerCoordinateEmbedding
 from keras_transformer.transformer import TransformerBlock
 
 
-def get_transformer(transformer_input, transformer_depth=3):
+def get_transformer(transformer_input, transformer_depth=2):
     transformer_block = TransformerBlock(
         name='transformer',
         num_heads=8,
