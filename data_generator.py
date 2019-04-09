@@ -35,7 +35,7 @@ class SiameseSequence(Sequence):
         self.iter = 0
 
     def __len__(self):
-        return int(np.ceil(len(self.x) * 2 / float(self.batch_size)))
+        return int(np.ceil(len(self.x) * 2 / float(self.batch_size)-1))
 
     def __getitem__(self, idx):
         left = []
@@ -62,7 +62,7 @@ class SiameseSequence(Sequence):
 
         left, right, label = shuffle(left, right, label)
 
-        return np.array(self.data_process_function(left)), np.array(self.data_process_function(right)), label
+        return [np.array(self.data_process_function(left)), np.array(self.data_process_function(right))], label
 
 
 class TripletSequence(Sequence):

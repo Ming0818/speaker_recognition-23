@@ -7,7 +7,8 @@ from sklearn import metrics
 from dataset import DataSet
 from feature_transform import get_vector, distance, mean_vectors
 from model import load_model
-
+from math import floor
+import keras.backend as K
 
 def model_simple_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
     num_of_voice_to_be_anchor = 3
@@ -47,6 +48,7 @@ def model_simple_test(model_path, file_path, output_shape, sample_rate, process_
 def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, process_class, model_type):
     num_of_voice_to_be_anchor = 3
     model = load_model(model_path, model_type)
+    print("load finished")
     dataset = DataSet(file_dir=file_path, output_shape=output_shape, sample_rate=sample_rate)
     x, y = dataset.get_train_data(process_class=process_class)
     predict_class = []
@@ -73,7 +75,21 @@ def leave_device_auc_test(model_path, file_path, output_shape, sample_rate, proc
         else:
             y[i] = 0
 
-    x = model.predict(np.array(x))
+    p = []
+
+    num = 5
+    time = floor(len(x)/num)
+    for i in range(time):
+        p.append(x[num * i: num * (i + 1)])
+
+    K.clear_session()
+    del model
+    model = load_model(model_path, model_type)
+    result = []
+    for i in p:
+        result.append(model.predict(np.array(i)))
+
+    x = np.concatenate(tuple(result))
 
 
     # calculate distance
@@ -247,5 +263,5 @@ if __name__ == '__main__':
     model_type = args.model_type
     net_depth = args.net_depth
 
-    model_simple_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
+    leave_device_auc_test(model_path=model_path, file_path=file_dir, output_shape=output_shape, sample_rate=sample_rate,
                           process_class=process_class, model_type=model_type)

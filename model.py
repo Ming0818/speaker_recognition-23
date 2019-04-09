@@ -1,16 +1,22 @@
 import keras
 import keras.backend as K
 from keras import Model, Input
-from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda, BatchNormalization, GRU
+from keras.activations import relu
+from keras.layers import Dense, Dropout, Flatten, Conv2D, MaxPooling2D, Embedding, Lambda, BatchNormalization, GRU, \
+    SpatialDropout1D, Conv1D, concatenate, GlobalMaxPooling1D, SpatialDropout2D, GlobalMaxPooling2D
 from keras.models import Sequential
 from keras.optimizers import Adam, RMSprop
 from keras.utils import plot_model
 
+from attention_resnet import resnet_1d
 from loss import l2_softmax, bpr_triplet_loss, identity_loss, euclidean_distance, eucl_dist_output_shape, \
     contrastive_loss, accuracy, cos_distance, l2_normalize
 from resnet import resnet_v2
 from transformer import get_transformer
-from attention_resnet import resnet_1d
+
+
+def relu_advanced(x):
+    return K.relu(x, max_value=5)
 
 
 def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
@@ -32,8 +38,65 @@ def get_model(shape=(32, 1024), num_classes=500, model_type=0, **kwargs):
         return siamese_model(shape, num_classes, **kwargs)
     elif model_type == 8:
         return res_plus_attention_model(shape, num_classes, **kwargs)
+    elif model_type == 9:
+        return text_cnn(shape, num_classes, **kwargs)
+    elif model_type == 10:
+        return full_res_net_model_voxceleb(shape, num_classes, **kwargs)
     else:
         print("error")
+
+
+def full_res_net_model_voxceleb(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
+    input_array = keras.Input(shape, name='input')
+
+    three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
+
+    resnet_output = resnet_v2(inputs=three_d_input, n=n)
+    resnet_output = BatchNormalization()(resnet_output)
+    mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
+    mid = BatchNormalization()(mid)
+    output = keras.layers.Dense(num_classes, activation='softmax', name="output_layer")(mid)
+
+    model = Model(inputs=input_array, outputs=output)
+    model.compile(loss=l2_softmax(l2_sm),
+                  optimizer="adam",
+                  metrics=['accuracy'])
+    model.summary()
+    return model
+
+
+def text_cnn(shape=(500, 64), num_classes=2, input_dim=93, feature_length=100, l2_sm=15, **kwargs):
+    input_array = keras.Input(shape, name='input')
+
+    three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
+    embedding_output = three_d_input
+
+    _embed = SpatialDropout2D(0.1)(embedding_output)
+    warppers = []
+    num_filters = 64
+    kernel_size = [3, 5]
+    conv_action = 'relu'
+    for _kernel_size in kernel_size:
+        for dilated_rate in [1, 3]:
+            conv1d = Conv2D(filters=num_filters, kernel_size=_kernel_size, activation=conv_action,
+                            dilation_rate=dilated_rate)(_embed)
+            warppers.append(GlobalMaxPooling2D()(conv1d))
+
+    fc = concatenate(warppers)
+    fc = BatchNormalization()(fc)
+    fc = Dropout(0.1)(fc)
+    fc = Dense(feature_length, activation='sigmoid', name="feature_layer")(fc)
+    fc = Dropout(0.1)(fc)
+    preds = Dense(num_classes, activation='softmax', name="output_layer")(fc)
+
+    model = Model(inputs=input_array, outputs=preds)
+    model.summary()
+
+    model.compile(loss=l2_softmax(l2_sm),
+                  optimizer='adam',
+                  metrics=['accuracy'])
+    # plot_model(model, "attention.png")
+    return model
 
 
 def res_plus_attention_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
@@ -112,12 +175,13 @@ def rnn(shape=(32, 1024), num_classes=500, l2_sm=15, **kwargs):
 def full_res_net_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2_sm=15, **kwargs):
     input_array = keras.Input(shape, name='input')
 
-    three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
+    # three_d_input = keras.layers.Reshape(target_shape=(*shape, 1))(input_array)
+    three_d_input = SpatialDropout2D(0.1)(input_array)
     resnet_output = resnet_v2(inputs=three_d_input, n=n)
     resnet_output = BatchNormalization()(resnet_output)
-    # resnet_output = Dropout(0.3)(resnet_output)
-    mid = keras.layers.Dense(feature_length, activation='sigmoid', name="feature_layer")(resnet_output)
-    # mid = Dropout(0.3)(mid)
+    resnet_output = Dropout(0.1)(resnet_output)
+    mid = keras.layers.Dense(feature_length, activation=relu_advanced, name="feature_layer")(resnet_output)
+    mid = Dropout(0.05)(mid)
     mid = BatchNormalization()(mid)
     output = keras.layers.Dense(num_classes, activation='softmax', name="output_layer")(mid)
 
@@ -178,7 +242,7 @@ def siamese_model(shape=(32, 1024), num_classes=500, n=1, feature_length=100, l2
 
     # train
     rms = RMSprop()
-    model.compile(loss=contrastive_loss, optimizer=rms, metrics=[accuracy])
+    model.compile(loss=contrastive_loss, optimizer="sgd", metrics=[accuracy])
     model.summary()
     return model
 
@@ -246,14 +310,19 @@ def load_model(model_path, load_type=0) -> keras.Model:
         model = keras.models.load_model(model_path, custom_objects={'bpr_triplet_loss': bpr_triplet_loss,
                                                                     'identity_loss': identity_loss})
         print(len(model.layers))
-        return Model(inputs=model.get_layer('model_1').get_input_at(0), output=model.get_layer('model_1').get_output_at(0))
+        return Model(inputs=model.get_layer('model_1').get_input_at(0),
+                     output=model.get_layer('model_1').get_output_at(0))
     elif load_type == 4:
         model = keras.models.load_model(model_path, custom_objects={'cos_distance': cos_distance,
                                                                     'eucl_dist_output_shape': eucl_dist_output_shape,
-                                                                    'contrastive_loss':contrastive_loss,
-                                                                    'accuracy':accuracy,
-                                                                    'l2_normalize':l2_normalize,
-                                                                    'euclidean_distance':euclidean_distance})
+                                                                    'contrastive_loss': contrastive_loss,
+                                                                    'accuracy': accuracy,
+                                                                    'l2_normalize': l2_normalize,
+                                                                    'euclidean_distance': euclidean_distance})
         print(len(model.layers))
         return Model(inputs=model.get_layer('model_1').get_input_at(0),
                      output=model.get_layer('model_1').get_output_at(0))
+    elif load_type == 5:
+        model = keras.models.load_model(model_path, custom_objects={'internal': l2_softmax(10), '<lambda>': temp})
+        return Model(inputs=model.input,
+                     output=model.layers[-2].output)

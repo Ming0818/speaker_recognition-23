@@ -55,7 +55,11 @@ class DataSet:
         :param sr:
         :return:
         """
-        full_num_needed = self.output_shape[0] * self.output_shape[1]
+        if len(self.output_shape) == 2:
+            full_num_needed = self.output_shape[0] * self.output_shape[1]
+        else:
+            full_num_needed = self.output_shape[0] * self.output_shape[1] * self.output_shape[2]
+
         if full_num_needed <= len(wave):
             wave = wave[:full_num_needed]
         else:
@@ -140,7 +144,7 @@ class DataSet:
         final_batch = []
         for file_path in batch:
             data, sr = self._read_data(file_path)
-            data = data[np.random.randint(8000):]
+            data = data[np.random.randint(4000):]
             final_batch.append(self._process_data((data, sr), process_class=self.process_class))
         return final_batch
 
